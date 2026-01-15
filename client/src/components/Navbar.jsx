@@ -9,7 +9,7 @@ const Navbar = () => {
 
       <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
 
-        {/* Logo with yellow accent */}
+        {/* Logo */}
         <Link
           to="/"
           className="text-lg font-semibold text-[var(--color-text)] flex items-center gap-2"
@@ -32,6 +32,14 @@ const Navbar = () => {
             className="text-[var(--color-muted)] hover:text-[var(--color-accent)] transition"
           >
             New Note
+          </Link>
+
+          {/* NEW: Documents (PDF Store) */}
+          <Link
+            to="/documents"
+            className="text-[var(--color-muted)] hover:text-[var(--color-accent)] transition"
+          >
+            Documents
           </Link>
 
           <Link

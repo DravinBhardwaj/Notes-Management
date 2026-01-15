@@ -1,22 +1,28 @@
 import { Routes, Route } from "react-router-dom";
-import Login from "./pages/Login";
-import Register from "./pages/Register";
-import Dashboard from "./pages/Dashboard";
-import  CreateNote  from "./pages/CreateNote";
-import EditNote from "./pages/EditNote";
 import Navbar from "./components/Navbar";
 
+import Dashboard from "./pages/Dashboard";
+import CreateNote from "./pages/CreateNote";
+import Documents from "./pages/Documents";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import EditNote from "./pages/EditNote"; 
 function App() {
   return (
     <>
       <Navbar />
-      <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/" element={<Dashboard />} />
-        <Route path="/create" element={<CreateNote />} />
-        <Route path="/edit/:id" element={<EditNote />} />
-      </Routes>
+
+      <main className="max-w-6xl mx-auto px-6 py-8">
+        <Routes>
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/create" element={<CreateNote />} />
+          <Route path="/documents" element={<Documents />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/edit/:noteId" element={<EditNote />} />
+
+          <Route path="/register" element={<Register />} />
+        </Routes>
+      </main>
     </>
   );
 }

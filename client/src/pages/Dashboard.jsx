@@ -1,11 +1,14 @@
 import heroVideo from "../assets/hero.mp4";
+import { Link } from "react-router-dom";
+import FeaturesSection from "../components/FeaturesSection";
+import RecentNotesPreview from "../components/RecentNotesPreview";
 
 const Dashboard = () => {
   return (
-    <div className="space-y-28">
+    <div className="space-y-24 md:space-y-28">
 
       {/* ================= HERO SECTION ================= */}
-      <section className="min-h-[85vh] grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+      <section className="min-h-[85vh] grid grid-cols-1 md:grid-cols-2 gap-10 items-center">
 
         {/* LEFT CONTENT */}
         <div className="space-y-6 md:pl-6">
@@ -22,19 +25,23 @@ const Dashboard = () => {
           </p>
 
           <div className="flex gap-4 pt-4">
-            <button className="bg-[var(--color-primary)] text-black px-6 py-3 rounded-lg font-medium hover:opacity-90 transition">
-              Create Note
-            </button>
+            <Link to="/create">
+              <button className="bg-[var(--color-primary)] text-black px-6 py-3 rounded-lg font-medium hover:opacity-90 transition">
+                Create Note
+              </button>
+            </Link>
 
-            <button className="border border-[var(--color-border)] px-6 py-3 rounded-lg hover:bg-[var(--color-surface)] transition">
-              View Notes
-            </button>
+            <Link to="/documents">
+              <button className="border border-[var(--color-border)] px-6 py-3 rounded-lg hover:bg-[var(--color-surface)] transition">
+                View Notes
+              </button>
+            </Link>
           </div>
         </div>
 
         {/* RIGHT VIDEO */}
-        <div className="relative flex justify-center ">
-          <video 
+        <div className="relative flex justify-center">
+          <video
             src={heroVideo}
             autoPlay
             loop
@@ -62,13 +69,47 @@ const Dashboard = () => {
 
         <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-6">
           <p className="text-sm text-[var(--color-muted)]">Quick Action</p>
-          <button className="mt-3 text-[var(--color-primary)] font-medium">
-            + New Note
-          </button>
+          <Link to="/create">
+            <button className="mt-3 text-[var(--color-primary)] font-medium">
+              + New Note
+            </button>
+          </Link>
         </div>
       </section>
 
-      
+      {/* ================= FEATURES SECTION ================= */}
+      <FeaturesSection />
+
+      {/* ================= RECENT NOTES PREVIEW ================= */}
+      <RecentNotesPreview />
+
+      {/* ================= FINAL CTA ================= */}
+      <section className="py-20 text-center">
+        <div className="
+          max-w-3xl mx-auto
+          bg-[var(--color-surface)]
+          border border-[var(--color-border)]
+          rounded-2xl
+          px-8 py-12
+          space-y-6
+        ">
+          <h2 className="text-3xl font-bold">
+            Turn ideas into documents that matter
+          </h2>
+
+          <p className="text-[var(--color-muted)]">
+            Write once, refine anytime, and export professional PDFs
+            without losing control over your content.
+          </p>
+
+          <Link to="/create">
+            <button className="bg-[var(--color-primary)] text-black px-8 py-3 rounded-xl font-medium hover:opacity-90 transition">
+              Start Writing
+            </button>
+          </Link>
+        </div>
+      </section>
+
     </div>
   );
 };
