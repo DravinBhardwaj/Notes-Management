@@ -1,52 +1,57 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useContext } from "react";
 import EditorPage from "../components/EditorPage";
+import API from "../utils/api";
+import { AuthContext } from "../context/AuthContext";
+import { toast } from "react-toastify";
 
 const MAX_PAGES = 10;
 const MAX_CHARS_PER_PAGE = 3500;
 
 const CreateNote = () => {
+  const { user } = useContext(AuthContext);
+
   const [title, setTitle] = useState("");
   const [pageColor, setPageColor] = useState("#EAF4FF");
 
   const [pages, setPages] = useState([{ id: Date.now() }]);
   const [activePageId, setActivePageId] = useState(pages[0].id);
 
+  const [pdfUrl, setPdfUrl] = useState(null);
+  const [noteId, setNoteId] = useState(null);
+
   const pageRefs = useRef({});
 
-  /* ---------- BASIC COMMAND ---------- */
+  /* ================= BASIC COMMAND ================= */
   const exec = (command, value = null) => {
     const page = pageRefs.current[activePageId];
     if (!page) return;
-
     page.focus();
     document.execCommand(command, false, value);
   };
 
-  /* ---------- FONT SIZE (SAFE) ---------- */
+  /* ================= FONT SIZE ================= */
   const applyFontSize = (size) => {
     const page = pageRefs.current[activePageId];
     if (!page) return;
 
     page.focus();
-
     const selection = window.getSelection();
     if (!selection.rangeCount) return;
 
     const range = selection.getRangeAt(0);
     const span = document.createElement("span");
     span.style.fontSize = size;
-    span.style.color = "#111";
+    span.style.color = "#000";
 
     span.appendChild(range.extractContents());
     range.insertNode(span);
-
     selection.removeAllRanges();
   };
 
-  /* ---------- ADD PAGE ---------- */
+  /* ================= ADD PAGE ================= */
   const addPage = () => {
     if (pages.length >= MAX_PAGES) {
-      alert(`Maximum ${MAX_PAGES} pages allowed`);
+      toast.warning(`Maximum ${MAX_PAGES} pages allowed`);
       return;
     }
 
@@ -55,10 +60,10 @@ const CreateNote = () => {
     setActivePageId(newPage.id);
   };
 
-  /* ---------- DELETE PAGE ---------- */
+  /* ================= DELETE PAGE ================= */
   const deletePage = (index) => {
     if (pages.length === 1) {
-      alert("At least one page is required");
+      toast.warning("At least one page is required");
       return;
     }
 
@@ -67,32 +72,60 @@ const CreateNote = () => {
     setActivePageId(updated[0].id);
   };
 
-  /* ---------- LIMIT CONTENT ---------- */
+  /* ================= LIMIT CONTENT ================= */
   const handleInput = (e) => {
     if (e.target.innerText.length > MAX_CHARS_PER_PAGE) {
       e.target.innerText = e.target.innerText.slice(0, MAX_CHARS_PER_PAGE);
     }
   };
 
-  /* ---------- SAVE ---------- */
-  const handleSaveNote = () => {
-    const content = pages.map((p) => ({
-      html: pageRefs.current[p.id]?.innerHTML || "",
-      bgColor: pageColor,
-    }));
+  /* ================= GENERATE PDF ================= */
+  const handleGeneratePdf = async () => {
+    try {
+      const pagesData = pages.map((p) => ({
+        html: pageRefs.current[p.id]?.innerHTML || "",
+        bgColor: pageColor,
+      }));
 
-    if (!title || content.every((p) => !p.html.trim())) {
-      alert("Title and content required");
-      return;
+      if (!title.trim() || pagesData.every((p) => !p.html.trim())) {
+        toast.warning("Title and content required");
+        return;
+      }
+
+      const { data } = await API.post("/notes", {
+        title,
+        pages: pagesData,
+      });
+
+      setPdfUrl(data.pdfUrl);
+setNoteId(data._id); //  THIS LINE WAS MISSING
+toast.success("PDF generated successfully");
+
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to generate PDF");
     }
-
-    console.log({ title, content });
-    alert("Note saved (frontend only)");
   };
+
+
+  const handleDownloadPdf = async () => {
+  try {
+    const res = await API.get(`/notes/${noteId}/download`, {
+      responseType: "blob",
+    });
+
+    const url = window.URL.createObjectURL(res.data);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${title}.pdf`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+  } catch (error) {
+    toast.error("Failed to download PDF");
+  }
+};
 
   return (
     <div className="max-w-5xl mx-auto space-y-5">
-
       {/* HEADER */}
       <div>
         <h1 className="text-2xl font-semibold">Create Note</h1>
@@ -106,18 +139,11 @@ const CreateNote = () => {
         value={title}
         onChange={(e) => setTitle(e.target.value)}
         placeholder="Note title..."
-        className="
-          w-full
-          bg-[var(--color-surface)]
-          border border-[var(--color-border)]
-          rounded-lg px-4 py-3
-          text-lg outline-none
-        "
+        className="w-full bg-[var(--color-surface)] border rounded-lg px-4 py-3 text-lg outline-none"
       />
 
       {/* TOOLBAR */}
       <div className="flex flex-wrap gap-2 border p-2 rounded-lg bg-[var(--color-surface)]">
-
         {["bold", "italic", "underline"].map((cmd) => (
           <button
             key={cmd}
@@ -128,8 +154,8 @@ const CreateNote = () => {
           </button>
         ))}
 
-        <button onClick={() => exec("insertUnorderedList")} className="editor-btn">•</button>
-        <button onClick={() => exec("insertOrderedList")} className="editor-btn">1.</button>
+        <button onClick={() => exec("insertUnorderedList")}>•</button>
+        <button onClick={() => exec("insertOrderedList")}>1.</button>
 
         <select
           onChange={(e) => applyFontSize(e.target.value)}
@@ -143,14 +169,11 @@ const CreateNote = () => {
         <input
           type="color"
           onChange={(e) => exec("foreColor", e.target.value)}
-          title="Text color"
         />
-
         <input
           type="color"
           value={pageColor}
           onChange={(e) => setPageColor(e.target.value)}
-          title="Page color"
         />
 
         <button
@@ -161,8 +184,8 @@ const CreateNote = () => {
         </button>
       </div>
 
-      {/* EDITOR VIEWPORT */}
-      <div className="h-[65vh] overflow-y-auto bg-gray-200 p-6 rounded-lg space-y-10">
+      {/* EDITOR */}
+      <div className="bg-gray-200 p-6 rounded-lg space-y-12">
         {pages.map((page, index) => (
           <EditorPage
             key={page.id}
@@ -172,23 +195,35 @@ const CreateNote = () => {
             onDelete={deletePage}
             onInput={handleInput}
             onFocus={() => setActivePageId(page.id)}
-            pageRef={(el) => (pageRefs.current[page.id] = el)}
+            isActive={activePageId === page.id}
+            registerRef={(el) => {
+              pageRefs.current[page.id] = el;
+            }}
           />
         ))}
       </div>
 
       {/* ACTIONS */}
-      <div className="flex gap-4">
+      <div className="flex flex-wrap gap-4">
         <button
-          onClick={handleSaveNote}
+          onClick={handleGeneratePdf}
           className="bg-[var(--color-primary)] text-black px-6 py-2 rounded-lg"
         >
-          Save
-        </button>
-
-        <button className="border px-6 py-2 rounded-lg">
           Generate PDF
         </button>
+
+       <button
+  disabled={!pdfUrl || !noteId}
+  onClick={handleDownloadPdf}
+  className={`px-6 py-2 rounded-lg border ${
+    pdfUrl
+      ? "hover:bg-[var(--color-surface)]"
+      : "opacity-50 cursor-not-allowed"
+  }`}
+>
+  Download PDF
+</button>
+
       </div>
     </div>
   );

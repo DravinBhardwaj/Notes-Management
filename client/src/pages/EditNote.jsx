@@ -1,6 +1,8 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useState, useRef, useEffect } from "react";
+import { toast } from "react-toastify";
 import EditorPage from "../components/EditorPage";
+import API from "../utils/api";
 
 const MAX_PAGES = 10;
 const MAX_CHARS_PER_PAGE = 3500;
@@ -11,99 +13,143 @@ const EditNote = () => {
 
   const [title, setTitle] = useState("");
   const [pageColor, setPageColor] = useState("#FFF6D5");
-
   const [pages, setPages] = useState([]);
+  const [activePageId, setActivePageId] = useState(null);
+  const [pdfUrl, setPdfUrl] = useState("");
+
   const pageRefs = useRef({});
 
-  /* ---------- LOAD NOTE (FRONTEND MOCK) ---------- */
+  /* ================= LOAD NOTE ================= */
   useEffect(() => {
-    // Later replace with API call using noteId
-    const mockNote = {
-      title: "Project Notes",
-      pages: [
-        {
-          id: Date.now(),
-          html: `<p>These are the original notes that were used to generate the PDF.</p>
-                 <p>You can edit them and regenerate the PDF.</p>`,
-        },
-      ],
-    };
+  API.get(`/notes/${noteId}`)
+    .then((res) => {
+      const note = res.data;
 
-    setTitle(mockNote.title);
-    setPages(mockNote.pages);
-  }, [noteId]);
+      //  FIX: ensure every page has a stable id
+      const fixedPages = note.pages.map((p) => ({
+        ...p,
+        id: p._id || crypto.randomUUID(),
+      }));
 
-  /* ---------- FORMATTING ---------- */
+      setTitle(note.title);
+      setPages(fixedPages);
+      setPdfUrl(note.pdfUrl);
+      setActivePageId(fixedPages[0]?.id);
+    })
+    .catch(() => alert("Failed to load note"));
+}, [noteId]);
+
+
+  /* ================= FORMATTING ================= */
   const exec = (cmd, value = null) => {
-    document.execCommand("styleWithCSS", false, true);
+    const page = pageRefs.current[activePageId];
+    if (!page) return;
+    page.focus();
     document.execCommand(cmd, false, value);
   };
 
-  const applyFontSize = (size) => {
-    document.execCommand("styleWithCSS", false, true);
-    document.execCommand("fontSize", false, "1");
+  /* ================= DOWNLOAD PDF ================= */
+  const handleDownloadPdf = async () => {
+    try {
+      const res = await API.get(`/notes/${noteId}/download`, {
+        responseType: "blob",
+      });
 
-    document.querySelectorAll("font").forEach((f) => {
-      f.removeAttribute("size");
-      f.style.fontSize = size;
-      f.style.color = "#1F2937";
-    });
+      const url = window.URL.createObjectURL(res.data);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${title}.pdf`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+
+      toast.success("PDF downloaded successfully");
+    } catch {
+      toast.error("Failed to download PDF");
+    }
   };
 
-  /* ---------- ADD PAGE ---------- */
+  const applyFontSize = (size) => {
+    const page = pageRefs.current[activePageId];
+    if (!page) return;
+
+    page.focus();
+    const selection = window.getSelection();
+    if (!selection.rangeCount) return;
+
+    const range = selection.getRangeAt(0);
+    const span = document.createElement("span");
+    span.style.fontSize = size;
+    span.style.color = "#000";
+
+    span.appendChild(range.extractContents());
+    range.insertNode(span);
+    selection.removeAllRanges();
+  };
+
+  /* ================= ADD PAGE ================= */
   const addPage = () => {
     if (pages.length >= MAX_PAGES) {
-      alert(`Maximum ${MAX_PAGES} pages allowed`);
+      toast.warning(`Maximum ${MAX_PAGES} pages allowed`);
       return;
     }
-    setPages([...pages, { id: Date.now(), html: "<p><br/></p>" }]);
+
+    const newPage = { id: Date.now(), html: "" };
+    setPages((prev) => [...prev, newPage]);
+    setActivePageId(newPage.id);
   };
 
-  /* ---------- DELETE PAGE ---------- */
+  /* ================= DELETE PAGE ================= */
   const deletePage = (index) => {
     if (pages.length === 1) {
-      alert("At least one page is required");
+      toast.warning("At least one page is required");
       return;
     }
-    setPages(pages.filter((_, i) => i !== index));
+
+    const updated = pages.filter((_, i) => i !== index);
+    setPages(updated);
+    setActivePageId(updated[0].id);
   };
 
-  /* ---------- LIMIT CONTENT ---------- */
+  /* ================= LIMIT CONTENT ================= */
   const handleInput = (e) => {
     if (e.target.innerText.length > MAX_CHARS_PER_PAGE) {
       e.target.innerText = e.target.innerText.slice(0, MAX_CHARS_PER_PAGE);
+      toast.warning("Maximum character limit reached");
     }
   };
 
-  /* ---------- UPDATE NOTE ---------- */
-  const handleUpdateNote = () => {
-    const updatedPages = pages.map((p) => ({
-      html: pageRefs.current[p.id]?.innerHTML || "",
-      bgColor: pageColor,
-    }));
+  /* ================= UPDATE NOTE ================= */
+  const handleUpdateNote = async () => {
+    try {
+      const updatedPages = pages.map((p) => ({
+        html: pageRefs.current[p.id]?.innerHTML || "",
+        bgColor: pageColor,
+      }));
 
-    if (!title || updatedPages.every((p) => !p.html.trim())) {
-      alert("Title and content required");
-      return;
+      if (!title.trim() || updatedPages.every((p) => !p.html.trim())) {
+        toast.warning("Title and content are required");
+        return;
+      }
+
+      const { data } = await API.put(`/notes/${noteId}`, {
+        title,
+        pages: updatedPages,
+      });
+
+      setPdfUrl(data.pdfUrl);
+      toast.success("Note saved & PDF regenerated");
+    } catch {
+      toast.error("Failed to update note");
     }
-
-    console.log("Updated Note:", { noteId, title, updatedPages });
-    alert("Note updated (frontend only)");
-  };
-
-  /* ---------- RE-GENERATE PDF ---------- */
-  const handleRegeneratePdf = () => {
-    alert("PDF re-generation will be handled by backend");
   };
 
   return (
     <div className="max-w-5xl mx-auto space-y-5">
-
       {/* HEADER */}
       <div>
         <h1 className="text-2xl font-semibold">Edit Note</h1>
         <p className="text-sm text-[var(--color-muted)]">
-          Update your note and regenerate the PDF
+          Edit note and regenerate the same PDF
         </p>
       </div>
 
@@ -120,18 +166,18 @@ const EditNote = () => {
           <button
             key={cmd}
             onClick={() => exec(cmd)}
-            className="px-3 py-1 rounded bg-indigo-200 text-black text-sm font-semibold"
+            className="px-3 py-1 bg-[var(--color-primary)] text-black rounded"
           >
             {cmd[0].toUpperCase()}
           </button>
         ))}
 
-        <button onClick={() => exec("insertUnorderedList")} className="editor-btn">•</button>
-        <button onClick={() => exec("insertOrderedList")} className="editor-btn">1.</button>
+        <button onClick={() => exec("insertUnorderedList")}>•</button>
+        <button onClick={() => exec("insertOrderedList")}>1.</button>
 
         <select
           onChange={(e) => applyFontSize(e.target.value)}
-          className="border rounded px-2 bg-white text-sm"
+          className="px-3 py-1 bg-[var(--color-primary)] text-black rounded"
         >
           <option value="14px">Normal</option>
           <option value="18px">Large</option>
@@ -139,7 +185,11 @@ const EditNote = () => {
         </select>
 
         <input type="color" onChange={(e) => exec("foreColor", e.target.value)} />
-        <input type="color" value={pageColor} onChange={(e) => setPageColor(e.target.value)} />
+        <input
+          type="color"
+          value={pageColor}
+          onChange={(e) => setPageColor(e.target.value)}
+        />
 
         <button
           onClick={addPage}
@@ -149,41 +199,47 @@ const EditNote = () => {
         </button>
       </div>
 
-      {/* PAGES */}
+      {/* EDITOR */}
       <div className="h-[65vh] overflow-y-auto bg-gray-200 p-6 rounded-lg space-y-10">
         {pages.map((page, index) => (
           <EditorPage
             key={page.id}
             index={index}
             pageColor={pageColor}
-            initialHtml={page.html}
             canDelete={pages.length > 1}
             onDelete={deletePage}
             onInput={handleInput}
-            pageRef={(el) => (pageRefs.current[page.id] = el)}
+            onFocus={() => setActivePageId(page.id)}
+            isActive={activePageId === page.id}
+            registerRef={(el) => {
+              pageRefs.current[page.id] = el;
+              if (el && page.html) el.innerHTML = page.html;
+            }}
           />
         ))}
       </div>
 
       {/* ACTIONS */}
-      <div className="flex flex-wrap gap-4">
+      <div className="flex gap-4">
         <button
           onClick={handleUpdateNote}
           className="bg-[var(--color-primary)] text-black px-6 py-2 rounded-lg"
         >
-          Update Note
+          Save & Generate PDF
         </button>
 
-        <button
-          onClick={handleRegeneratePdf}
-          className="border px-6 py-2 rounded-lg"
-        >
-          Re-generate PDF
-        </button>
+        {pdfUrl && (
+          <button
+            onClick={handleDownloadPdf}
+            className="border px-6 py-2 rounded-lg"
+          >
+            Download PDF
+          </button>
+        )}
 
         <button
           onClick={() => navigate(-1)}
-          className="px-5 py-2 rounded-lg border text-[var(--color-muted)] hover:bg-[var(--color-surface)]"
+          className="px-5 py-2 rounded-lg border text-[var(--color-muted)]"
         >
           Cancel
         </button>

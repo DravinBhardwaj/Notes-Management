@@ -1,41 +1,54 @@
+import { useEffect, useRef } from "react";
+
 const EditorPage = ({
   index,
   pageColor,
   onDelete,
-  onInput,
-  pageRef,
   canDelete,
+  onInput,
   onFocus,
+  registerRef,
+  isActive,
 }) => {
+  const localRef = useRef(null);
+
+  useEffect(() => {
+    if (localRef.current && registerRef) {
+      registerRef(localRef.current);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isActive && localRef.current) {
+      localRef.current.focus();
+    }
+  }, [isActive]);
+
   return (
-    <div
-      ref={pageRef}
-      contentEditable
-      onInput={onInput}
-      onFocus={onFocus}
-      className="
-        relative
-        min-h-[650px]
-        bg-white
-        p-6
-        outline-none
-        shadow
-        rounded
-        text-[14px]
-        text-[#111]
-      "
-      style={{ backgroundColor: pageColor }}
-    >
+    <div className="relative">
       {canDelete && (
         <button
           onClick={() => onDelete(index)}
-          className="absolute top-2 right-2 text-xs text-red-500 hover:underline"
           contentEditable={false}
+          className="absolute top-2 right-2 text-xs text-red-600 hover:underline z-10"
         >
           Delete Page
         </button>
       )}
-      <p><br /></p>
+
+      <div
+        ref={localRef}
+        contentEditable
+        suppressContentEditableWarning
+        onInput={onInput}
+        onFocus={onFocus}
+        className="min-h-[900px] p-6 outline-none rounded-lg shadow bg-white text-black text-[14px]"
+        style={{
+          backgroundColor: pageColor,
+          color: "#000",
+          caretColor: "#000",
+        }}
+      />
     </div>
   );
 };

@@ -1,19 +1,19 @@
 const features = [
   {
-    title: "Page-based Editor",
-    desc: "Write notes page-by-page just like a real document. Each page is PDF-ready.",
+    title: "Structured Page Editor",
+    desc: "Create notes in a page-based format that mirrors real academic documents, ensuring clarity and consistency.",
   },
   {
-    title: "Editable Source, Immutable PDF",
-    desc: "Edit original notes anytime and regenerate PDFs without losing structure.",
+    title: "Editable Notes with PDF Output",
+    desc: "Update your notes anytime and regenerate clean PDFs without breaking layout or formatting.",
   },
   {
-    title: "Upload & Manage Documents",
-    desc: "Upload your own PDFs, organize them, view anytime — editing stays protected.",
+    title: "Secure Document Management",
+    desc: "Upload, organize, and access your PDFs in one place while maintaining strict ownership and access control.",
   },
   {
-    title: "Distraction-free Design",
-    desc: "Minimal UI focused on writing, reading, and thinking clearly.",
+    title: "Focused Study Experience",
+    desc: "A minimal, distraction-free interface designed to help you write, read, and revise efficiently.",
   },
 ];
 
@@ -24,11 +24,11 @@ const FeaturesSection = () => {
       {/* SECTION HEADER */}
       <div className="text-center space-y-4">
         <h2 className="text-3xl font-bold">
-          Built for serious note-taking
+          Designed for academic workflows
         </h2>
         <p className="max-w-2xl mx-auto text-[var(--color-muted)]">
-          A document-first approach where notes are not just text,
-          but structured, editable sources that generate real PDFs.
+          A structured note-taking system built to support focused study,
+          revision, and reliable document generation.
         </p>
       </div>
 

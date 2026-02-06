@@ -1,6 +1,9 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useState, useContext, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import loginVideo from "../assets/loginpage.mp4";
+import API from "../utils/api";
+import { AuthContext } from "../context/AuthContext";
+import { toast } from "react-toastify";
 
 const Login = () => {
   const [mode, setMode] = useState("login");
@@ -8,37 +11,73 @@ const Login = () => {
     name: "",
     email: "",
     password: "",
+    groupId: "",
+    groupMode: "join", //  NEW
   });
+  const [loading, setLoading] = useState(false);
+
+  const { user, setUser } = useContext(AuthContext);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (user) navigate("/");
+  }, [user, navigate]);
 
   const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    setForm((prev) => ({
+      ...prev,
+      [e.target.name]: e.target.value,
+    }));
   };
 
-  const handleSubmit = () => {
-    if (!form.email || !form.password || (mode === "signup" && !form.name)) {
-      alert("Please fill all required fields");
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    if (
+      !form.email ||
+      !form.password ||
+      (mode === "signup" &&
+        (!form.name || !form.groupId || !form.groupMode))
+    ) {
+      toast.warning("Please fill all required fields");
       return;
     }
 
-    alert(`${mode === "login" ? "Logged in" : "Signed up"} (frontend only)`);
+    setLoading(true);
+
+    try {
+      const endpoint = mode === "login" ? "/auth/login" : "/auth/register";
+
+      await API.post(endpoint, form);
+
+      if (mode === "login") {
+        const res = await API.get("/auth/me");
+        setUser(res.data);
+        toast.success("Welcome back 👋");
+        navigate("/");
+      } else {
+        toast.success("Account created successfully. Please login.");
+        setMode("login");
+        setForm({
+          name: "",
+          email: "",
+          password: "",
+          groupId: "",
+          groupMode: "join",
+        });
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Something went wrong");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div className="min-h-[85vh] grid grid-cols-1 md:grid-cols-2">
-
-      {/* ================= LEFT VIDEO CARD ================= */}
-      <div className="hidden md:flex items-center justify-center">
-
-        <div className="
-          relative
-          w-[480px]
-          h-[520px]
-          rounded-2xl
-          overflow-hidden
-          shadow-2xl
-          border border-[var(--color-border)]
-        ">
-          {/* VIDEO */}
+    <div className="min-h-[90vh] grid grid-cols-1 lg:grid-cols-2 bg-gradient-to-br from-[#0f172a] via-[#111827] to-[#020617]">
+      {/* LEFT VIDEO */}
+      <div className="hidden lg:flex items-center justify-center px-10">
+        <div className="relative w-[520px] h-[560px] rounded-3xl overflow-hidden border border-white/10">
           <video
             src={loginVideo}
             autoPlay
@@ -47,47 +86,35 @@ const Login = () => {
             playsInline
             className="w-full h-full object-cover"
           />
-
-          {/* OVERLAY */}
-          <div className="absolute inset-0 bg-black/40" />
-
-          {/* TEXT */}
-          <div className="absolute bottom-8 left-8 right-8 text-white space-y-2">
-            <h1 className="text-3xl font-bold">
-              Notes<span className="text-[var(--color-primary)]">.</span>
-            </h1>
-            <p className="text-sm text-gray-200 leading-relaxed">
-              A calm, distraction-free space to write, refine,
-              and generate meaningful documents.
-            </p>
-          </div>
+          <div className="absolute inset-0 bg-black/25" />
         </div>
-
       </div>
 
-      {/* ================= RIGHT AUTH CARD ================= */}
+      {/* AUTH CARD */}
       <div className="flex items-center justify-center px-6">
-        <div className="w-full max-w-md bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-8 space-y-6">
+        <div className="w-full max-w-md bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-8 space-y-6">
+          <h2 className="text-2xl font-semibold text-white text-center">
+            {mode === "login" ? "Welcome back" : "Create your account"}
+          </h2>
 
-          {/* TOGGLE */}
-          <div className="flex bg-[var(--color-bg)] rounded-lg p-1">
+          {/* SWITCH */}
+          <div className="flex bg-black/30 rounded-xl p-1">
             <button
               onClick={() => setMode("login")}
-              className={`flex-1 py-2 rounded-md text-sm font-medium transition ${
+              className={`flex-1 py-2 rounded-lg ${
                 mode === "login"
                   ? "bg-[var(--color-primary)] text-black"
-                  : "text-[var(--color-muted)]"
+                  : "text-gray-400"
               }`}
             >
               Login
             </button>
-
             <button
               onClick={() => setMode("signup")}
-              className={`flex-1 py-2 rounded-md text-sm font-medium transition ${
+              className={`flex-1 py-2 rounded-lg ${
                 mode === "signup"
                   ? "bg-[var(--color-primary)] text-black"
-                  : "text-[var(--color-muted)]"
+                  : "text-gray-400"
               }`}
             >
               Sign Up
@@ -95,20 +122,57 @@ const Login = () => {
           </div>
 
           {/* FORM */}
-          <div className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
             {mode === "signup" && (
-              <input
-                type="text"
-                name="name"
-                placeholder="Your name"
-                value={form.name}
-                onChange={handleChange}
-                className="auth-input"
-              />
+              <>
+                <input
+                  name="name"
+                  placeholder="Your name"
+                  value={form.name}
+                  onChange={handleChange}
+                  className="auth-input"
+                />
+
+                {/*  GROUP MODE */}
+                <div className="flex gap-4 text-sm text-gray-300">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="groupMode"
+                      value="join"
+                      checked={form.groupMode === "join"}
+                      onChange={handleChange}
+                    />
+                    Join existing group
+                  </label>
+
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="groupMode"
+                      value="create"
+                      checked={form.groupMode === "create"}
+                      onChange={handleChange}
+                    />
+                    Create new group
+                  </label>
+                </div>
+
+                <input
+                  name="groupId"
+                  placeholder={
+                    form.groupMode === "create"
+                      ? "New Group ID (unique)"
+                      : "Existing Group ID"
+                  }
+                  value={form.groupId}
+                  onChange={handleChange}
+                  className="auth-input"
+                />
+              </>
             )}
 
             <input
-              type="email"
               name="email"
               placeholder="Email address"
               value={form.email}
@@ -124,50 +188,25 @@ const Login = () => {
               onChange={handleChange}
               className="auth-input"
             />
-          </div>
 
-          {/* ACTION */}
-          <button
-            onClick={handleSubmit}
-            className="w-full bg-[var(--color-primary)] text-black py-3 rounded-lg font-medium hover:opacity-90 transition"
-          >
-            {mode === "login" ? "Login" : "Create Account"}
-          </button>
-
-          {/* FOOTER */}
-          <p className="text-center text-sm text-[var(--color-muted)]">
-            {mode === "login" ? (
-              <>
-                Don’t have an account?{" "}
-                <button
-                  onClick={() => setMode("signup")}
-                  className="text-[var(--color-primary)] hover:underline"
-                >
-                  Sign up
-                </button>
-              </>
-            ) : (
-              <>
-                Already have an account?{" "}
-                <button
-                  onClick={() => setMode("login")}
-                  className="text-[var(--color-primary)] hover:underline"
-                >
-                  Login
-                </button>
-              </>
-            )}
-          </p>
-
-          <div className="text-center">
-            <Link
-              to="/"
-              className="text-xs text-[var(--color-muted)] hover:underline"
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3 rounded-xl bg-[var(--color-primary)] text-black font-medium"
             >
-              ← Back to Dashboard
-            </Link>
-          </div>
+              {loading
+                ? mode === "login"
+                  ? "Logging in..."
+                  : "Creating..."
+                : mode === "login"
+                ? "Login"
+                : "Create Account"}
+            </button>
+          </form>
 
+          <Link to="/" className="block text-center text-xs text-gray-500">
+            ← Back to Dashboard
+          </Link>
         </div>
       </div>
     </div>
