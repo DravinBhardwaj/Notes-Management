@@ -1,6 +1,7 @@
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useContext, useState } from "react";
 import { AuthContext } from "../context/AuthContext";
+import logo from "../assets/Acadexia.png";
 
 const Navbar = () => {
   const { user, logout, loading } = useContext(AuthContext);
@@ -66,9 +67,26 @@ const Navbar = () => {
       <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
 
         {/* LOGO */}
-        <Link to="/" className="text-lg font-semibold tracking-wide text-white">
-          Notes
-        </Link>
+<Link
+  to="/"
+  className="flex items-center gap-7 text-2xl font-bold text-white"
+>
+  <img
+    src={logo}
+    alt="Acadexia"
+    className="
+      h-10 w-15        /* layout size (small) */
+      scale-[2]     /* visual size (big) */
+      origin-left
+      object-contain
+    "
+  />
+  <span>Acadexia</span>
+</Link>
+
+
+
+
 
         {/* ================= NOT LOGGED IN ================= */}
         {!user && (

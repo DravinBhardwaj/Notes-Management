@@ -6,6 +6,7 @@ import FeaturesSection from "../components/FeaturesSection";
 import RecentNotesPreview from "../components/RecentNotesPreview";
 import DashboardStats from "../components/DashboardStats";
 import SuperAdminDashboardStats from "../components/SuperAdminDashboardStats";
+import logo from "../assets/Acadexia.png";
 
 import { AuthContext } from "../context/AuthContext";
 

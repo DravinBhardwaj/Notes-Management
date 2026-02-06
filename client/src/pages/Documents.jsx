@@ -117,7 +117,7 @@ const Documents = () => {
     return filteredDocs.filter((doc) => {
       if (doc.visibility !== "private") return false;
 
-      // 👑 Superadmin sees ALL private notes
+      //  Superadmin sees ALL private notes
       if (user.role === "superadmin") return true;
 
       // Others see only their own
