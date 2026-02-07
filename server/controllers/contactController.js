@@ -4,25 +4,28 @@ export const checkSuperAdminContactLimit = async (req, res) => {
   try {
     const userId = req.user.id;
 
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
+    // Start of today (server time)
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    if (
-      user.lastSuperAdminContact &&
-      user.lastSuperAdminContact >= today
-    ) {
+    // 🔒 ATOMIC check + update (CORRECT)
+    const updatedUser = await User.findOneAndUpdate(
+      {
+        _id: userId,
+        $or: [
+          { lastSuperAdminContact: null },       // ✅ NEW USER
+          { lastSuperAdminContact: { $lt: today } }, // ✅ OLD USER (previous day)
+        ],
+      },
+      { lastSuperAdminContact: new Date() },
+      { new: true }
+    );
+
+    if (!updatedUser) {
       return res.status(429).json({
         message: "You can send only one request per day",
       });
     }
-
-    user.lastSuperAdminContact = new Date();
-    await user.save();
 
     res.status(200).json({ allowed: true });
   } catch (err) {

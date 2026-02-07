@@ -12,6 +12,13 @@ const ContactSuperAdmin = () => {
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState(""); // success | limit | error
 
+  // ✅ Explicit role mapping (IMPORTANT)
+  const getUserRoleLabel = () => {
+    if (user.role === "superadmin") return "Super Admin";
+    if (user.isGroupAdmin) return "Group Admin";
+    return "Student";
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -24,18 +31,18 @@ const ContactSuperAdmin = () => {
     setStatus("");
 
     try {
-      // 🔒 Backend check (1 request per day)
+      // 🔒 Backend rate-limit check (1 request/day)
       await API.post("/users/contact-super-admin");
 
-      // 📩 Send email
+      // 📩 Send email via EmailJS
       await emailjs.send(
         import.meta.env.VITE_EMAILJS_SERVICE_ID,
         import.meta.env.VITE_EMAILJS_TEMPLATE_ID,
         {
           name: user.name,
           email: user.email,
-          role: user.role,
-          message,
+          role: getUserRoleLabel(), // ✅ FIXED
+          message: message,
         },
         import.meta.env.VITE_EMAILJS_PUBLIC_KEY
       );
@@ -56,7 +63,7 @@ const ContactSuperAdmin = () => {
   };
 
   return (
-    <div className="bg-[var(--color-surface)] border rounded-xl p-6">
+    <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-6">
       <h2 className="text-xl font-semibold mb-1">
         Contact Super Admin
       </h2>
@@ -69,23 +76,32 @@ const ContactSuperAdmin = () => {
           type="text"
           value={user.name}
           disabled
-          className="w-full px-3 py-2 rounded bg-black/20 text-sm"
+          className="w-full px-3 py-2 rounded bg-black/20 text-sm text-gray-300"
         />
 
         <input
           type="email"
           value={user.email}
           disabled
-          className="w-full px-3 py-2 rounded bg-black/20 text-sm"
+          className="w-full px-3 py-2 rounded bg-black/20 text-sm text-gray-300"
         />
 
         <textarea
-          placeholder="Write your request…"
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          className="w-full px-3 py-2 rounded bg-black/20 text-sm resize-none"
-          rows={4}
-        />
+  placeholder="Write your request…"
+  value={message}
+  onChange={(e) => setMessage(e.target.value)}
+  onKeyDown={(e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      if (!loading && message.trim()) {
+        handleSubmit(e);
+      }
+    }
+  }}
+  className="w-full px-3 py-2 rounded bg-black/20 text-sm resize-none text-white"
+  rows={4}
+/>
+
 
         <button
           type="submit"
@@ -104,8 +120,8 @@ const ContactSuperAdmin = () => {
           <div className="flex items-center justify-between mt-3 px-3 py-2 rounded bg-black/30 text-sm">
             <span>
               {status === "success" && "✅ Request sent successfully!"}
-              {status === "limit" && " You can send only one request per day."}
-              {status === "error" && " Failed to send request. Try again."}
+              {status === "limit" && "⚠️ You can send only one request per day."}
+              {status === "error" && "❌ Failed to send request. Try again."}
             </span>
 
             <button
