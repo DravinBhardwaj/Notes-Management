@@ -10,9 +10,8 @@ const ContactSuperAdmin = () => {
 
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
-  const [status, setStatus] = useState(""); // success | limit | error
+  const [status, setStatus] = useState("");
 
-  // ✅ Explicit role mapping (IMPORTANT)
   const getUserRoleLabel = () => {
     if (user.role === "superadmin") return "Super Admin";
     if (user.isGroupAdmin) return "Group Admin";
@@ -21,119 +20,125 @@ const ContactSuperAdmin = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    if (!message.trim()) {
-      setStatus("error");
-      return;
-    }
+    if (!message.trim()) return setStatus("error");
 
     setLoading(true);
     setStatus("");
 
     try {
-      // 🔒 Backend rate-limit check (1 request/day)
       await API.post("/users/contact-super-admin");
 
-      // 📩 Send email via EmailJS
       await emailjs.send(
         import.meta.env.VITE_EMAILJS_SERVICE_ID,
         import.meta.env.VITE_EMAILJS_TEMPLATE_ID,
         {
           name: user.name,
           email: user.email,
-          role: getUserRoleLabel(), // ✅ FIXED
-          message: message,
+          role: getUserRoleLabel(),
+          message,
         },
         import.meta.env.VITE_EMAILJS_PUBLIC_KEY
       );
 
       setStatus("success");
       setMessage("");
-    } catch (error) {
-      console.error(error);
-
-      if (error.response?.status === 429) {
-        setStatus("limit");
-      } else {
-        setStatus("error");
-      }
+    } catch (err) {
+      if (err.response?.status === 429) setStatus("limit");
+      else setStatus("error");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-6">
-      <h2 className="text-xl font-semibold mb-1">
-        Contact Super Admin
-      </h2>
-      <p className="text-sm text-gray-400 mb-4">
-        One request allowed per day
-      </p>
+    <div className="max-w-5xl mx-auto mt-8 px-4">
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <input
-          type="text"
-          value={user.name}
-          disabled
-          className="w-full px-3 py-2 rounded bg-black/20 text-sm text-gray-300"
-        />
+      <div className="relative bg-[var(--color-surface)]/80 backdrop-blur-xl border border-white/10 rounded-2xl p-7 shadow-lg">
+        {/* Header */}
+        <h2 className="text-2xl font-semibold text-white mb-1">
+          Contact Super Admin
+        </h2>
+        <p className="text-sm text-gray-400 mb-6">
+          You can send only <span className="text-white font-medium">one request per day</span>
+        </p>
 
-        <input
-          type="email"
-          value={user.email}
-          disabled
-          className="w-full px-3 py-2 rounded bg-black/20 text-sm text-gray-300"
-        />
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Name */}
+          <input
+            type="text"
+            value={user.name}
+            disabled
+            className="w-full px-4 py-2.5 rounded-lg bg-black/30 text-sm text-gray-300 border border-white/10"
+          />
 
-        <textarea
-  placeholder="Write your request…"
-  value={message}
-  onChange={(e) => setMessage(e.target.value)}
-  onKeyDown={(e) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      if (!loading && message.trim()) {
-        handleSubmit(e);
-      }
-    }
-  }}
-  className="w-full px-3 py-2 rounded bg-black/20 text-sm resize-none text-white"
-  rows={4}
-/>
+          {/* Email */}
+          <input
+            type="email"
+            value={user.email}
+            disabled
+            className="w-full px-4 py-2.5 rounded-lg bg-black/30 text-sm text-gray-300 border border-white/10"
+          />
 
-
-        <button
-          type="submit"
-          disabled={loading || !message.trim()}
-          className={`w-full px-4 py-2 rounded font-medium transition ${
-            loading || !message.trim()
-              ? "bg-gray-600 cursor-not-allowed"
-              : "bg-[var(--color-primary)] text-black hover:opacity-90"
-          }`}
-        >
-          {loading ? "Sending..." : "Send Request"}
-        </button>
-
-        {/* STATUS MESSAGE */}
-        {status && (
-          <div className="flex items-center justify-between mt-3 px-3 py-2 rounded bg-black/30 text-sm">
-            <span>
-              {status === "success" && "✅ Request sent successfully!"}
-              {status === "limit" && "⚠️ You can send only one request per day."}
-              {status === "error" && "❌ Failed to send request. Try again."}
-            </span>
-
-            <button
-              type="button"
-              onClick={() => setStatus("")}
-              className="text-red-400 hover:text-red-500 font-bold"
-            >
-              ✕
-            </button>
+          {/* Message */}
+          <div>
+            <textarea
+              placeholder="Write your request…"
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  if (!loading && message.trim()) handleSubmit(e);
+                }
+              }}
+              className="w-full px-4 py-3 rounded-lg bg-black/30 text-sm text-white resize-none border border-white/10 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
+              rows={4}
+            />
+            <p className="text-xs text-gray-400 mt-1">
+              Press <b>Enter</b> to send and <b>Shift + Enter</b> for new line
+            </p>
           </div>
-        )}
-      </form>
+
+          {/* Button */}
+          <button
+  type="submit"
+  disabled={loading || !message.trim()}
+  className={`w-full py-2.5 rounded-lg font-semibold transition-all ${
+    loading || !message.trim()
+      ? "bg-gray-600 cursor-not-allowed"
+      : "bg-gradient-to-r from-indigo-300 via-purple-300 to-yellow-300 text-black hover:brightness-105"
+  }`}
+>
+  {loading ? "Sending…" : "Send Request"}
+</button>
+
+
+          {/* Status */}
+          {status && (
+            <div
+              className={`mt-3 px-4 py-2 rounded-lg text-sm flex items-center justify-between ${
+                status === "success"
+                  ? "bg-green-500/10 text-green-400"
+                  : status === "limit"
+                  ? "bg-yellow-500/10 text-yellow-400"
+                  : "bg-red-500/10 text-red-400"
+              }`}
+            >
+              <span>
+                {status === "success" && "✅ Request sent successfully"}
+                {status === "limit" && "⏳ You’ve already sent a request today"}
+                {status === "error" && "❌ Something went wrong. Try again"}
+              </span>
+              <button
+                onClick={() => setStatus("")}
+                className="font-bold hover:opacity-70"
+              >
+                ✕
+              </button>
+            </div>
+          )}
+        </form>
+      </div>
     </div>
   );
 };
