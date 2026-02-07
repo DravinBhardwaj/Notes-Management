@@ -69,20 +69,25 @@ const Navbar = () => {
         {/* LOGO */}
 <Link
   to="/"
-  className="flex items-center gap-7 text-2xl font-bold text-white"
+  className="flex items-center gap-8 sm:gap-8 text-xl sm:text-2xl font-bold text-white"
 >
-  <img
-    src={logo}
-    alt="Acadexia"
-    className="
-      h-10 w-15        /* layout size (small) */
-      scale-[2]     /* visual size (big) */
-      origin-left
-      object-contain
-    "
-  />
-  <span>Acadexia</span>
+  <div className="flex items-center">
+    <img
+      src={logo}
+      alt="Acadexia"
+      className="
+        h-12 sm:h-10
+        sm:scale-[2]
+        origin-left
+        object-contain
+      "
+    />
+  </div>
+
+  {/* Hide text on screens < 640px (covers 415px) */}
+  <span className="hidden sm:inline">Acadexia</span>
 </Link>
+
 
 
 
