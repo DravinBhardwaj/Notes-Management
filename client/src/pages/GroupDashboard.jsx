@@ -2,6 +2,7 @@ import { useEffect, useState, useContext } from "react";
 import API from "../utils/api";
 import { AuthContext } from "../context/AuthContext";
 import { toast } from "react-toastify";
+import ContactSuperAdmin from "../components/ContactSuperAdmin";
 
 const GroupDashboard = () => {
   const { user } = useContext(AuthContext);
@@ -24,9 +25,7 @@ const GroupDashboard = () => {
   /* ================= TOGGLE ADMIN ================= */
   const toggleAdmin = async (id) => {
     try {
-      const res = await API.put(
-        `/group/members/${id}/toggle-admin`
-      );
+      const res = await API.put(`/group/members/${id}/toggle-admin`);
 
       setMembers((prev) =>
         prev.map((u) => (u._id === id ? res.data : u))
@@ -67,7 +66,8 @@ const GroupDashboard = () => {
 
   /* ================= RENDER ================= */
   return (
-    <div className="max-w-4xl mx-auto p-6 space-y-6">
+    <div className="max-w-4xl mx-auto p-6 space-y-8">
+      {/* HEADER */}
       <div>
         <h1 className="text-2xl font-bold text-white">
           Group Dashboard
@@ -78,6 +78,7 @@ const GroupDashboard = () => {
         </p>
       </div>
 
+      {/* MEMBERS LIST */}
       <div className="rounded-xl border border-white/10 overflow-hidden">
         {members.map((m) => (
           <div
@@ -100,7 +101,7 @@ const GroupDashboard = () => {
                 {m.isGroupAdmin ? "⭐ Admin" : "🎓 Student"}
               </span>
 
-              {/*  ONLY GROUP ADMIN CAN SEE BUTTON */}
+              {/* ONLY GROUP ADMIN CAN SEE BUTTON */}
               {user.isGroupAdmin && user._id !== m._id && (
                 <button
                   onClick={() => toggleAdmin(m._id)}
@@ -119,6 +120,13 @@ const GroupDashboard = () => {
           </div>
         ))}
       </div>
+
+      {/* CONTACT SUPER ADMIN */}
+      {user.role !== "superadmin" && (
+        <div className="pt-4">
+          <ContactSuperAdmin />
+        </div>
+      )}
     </div>
   );
 };
