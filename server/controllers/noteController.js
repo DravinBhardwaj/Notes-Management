@@ -155,12 +155,15 @@ export const updateNote = async (req, res) => {
     const { title, pages, visibility } = req.body;
 
     const note = await Note.findById(req.params.id);
-    if (!note) return res.status(404).json({ message: "Note not found" });
+    if (!note) {
+      return res.status(404).json({ message: "Note not found" });
+    }
 
     const isOwner = String(note.user) === String(req.userId);
     const isSuperAdmin = req.user.role === "superadmin";
     const isGroupAdmin = req.user.isGroupAdmin === true;
 
+    //  Cannot modify notes outside group (unless superadmin or owner)
     if (
       !isSuperAdmin &&
       normalizeGroupId(note.groupId) !== normalizeGroupId(req.user.groupId) &&
@@ -171,29 +174,33 @@ export const updateNote = async (req, res) => {
       });
     }
 
+    //  Basic permission check
     if (!isOwner && !isGroupAdmin && !isSuperAdmin) {
       return res.status(403).json({ message: "Access denied" });
     }
 
     const config = await SystemConfig.findOne();
+  if (
+  visibility === "public" &&
+  note.visibility === "private" &&
+  config?.postingEnabled === false &&
+  !isSuperAdmin
+) {
+  return res.status(403).json({
+    message: "Posting window is disabled by super admin",
+  });
+}
 
-    if (
-      visibility === "public" &&
-      note.visibility === "private" &&
-      config?.postingEnabled === false &&
-      !isSuperAdmin
-    ) {
-      return res.status(403).json({
-        message: "Public posting is disabled",
-      });
-    }
 
-    // VISIBILITY ONLY
+
+    // ✅ VISIBILITY-ONLY UPDATE (no PDF regeneration)
     if (visibility && !title && !pages) {
       note.visibility = visibility;
       await note.save();
       return res.json(note);
     }
+
+    // ================= PDF REGENERATION =================
 
     const doc = new PDFDocument({ margin: 50 });
     const buffers = [];
@@ -213,7 +220,8 @@ export const updateNote = async (req, res) => {
       res.json(note);
     });
 
-    doc.fontSize(20).text(note.title, { underline: true }).moveDown();
+    doc.fontSize(20).text(title ?? note.title, { underline: true }).moveDown();
+
     (pages ?? note.pages).forEach((p, i) => {
       if (i) doc.addPage();
       doc.fontSize(12).text(cleanHtml(p.html));
@@ -225,6 +233,7 @@ export const updateNote = async (req, res) => {
     res.status(500).json({ message: "Failed to update note" });
   }
 };
+
 
 /* ================= UPLOAD PDF ================= */
 
