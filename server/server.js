@@ -18,35 +18,30 @@ connectDB();
 
 const app = express();
 
-/* ---------- CORS SETUP ---------- */
-const allowedOrigins = [
-  process.env.CLIENT_URL,          // production frontend
-  "http://localhost:5173",          // local dev
-  "http://127.0.0.1:5173",
-];
+/* =========================================================
+   🔥 VERY IMPORTANT (REQUIRED FOR RENDER + COOKIES)
+   ========================================================= */
+app.set("trust proxy", 1);
 
+/* =========================================================
+   CORS CONFIG (SIMPLIFIED & CORRECT)
+   ========================================================= */
 app.use(
   cors({
-    origin: (origin, callback) => {
-      // allow server-to-server, Postman, health checks
-      if (!origin) return callback(null, true);
-
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
-
-      return callback(null, false);
-    },
+    origin: process.env.CLIENT_URL, // e.g. https://notes-management-2flb.vercel.app
     credentials: true,
   })
 );
 
-
-/* ---------- MIDDLEWARES ---------- */
+/* =========================================================
+   MIDDLEWARES
+   ========================================================= */
 app.use(express.json({ limit: "4mb" }));
 app.use(cookieParser());
 
-/* ---------- HEALTH / PING ---------- */
+/* =========================================================
+   HEALTH / PING
+   ========================================================= */
 app.get("/", (req, res) => {
   res.send("API is running...");
 });
@@ -55,14 +50,18 @@ app.get("/ping", (req, res) => {
   res.status(200).json({ status: "ok" });
 });
 
-/* ---------- ROUTES ---------- */
+/* =========================================================
+   ROUTES
+   ========================================================= */
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/notes", noteRoutes);
 app.use("/api/group", groupRoutes);
 
-/* ---------- SERVER ---------- */
+/* =========================================================
+   SERVER
+   ========================================================= */
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);

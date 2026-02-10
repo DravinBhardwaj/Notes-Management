@@ -12,13 +12,14 @@ const Login = () => {
     email: "",
     password: "",
     groupId: "",
-    groupMode: "join", //  NEW
+    groupMode: "join",
   });
   const [loading, setLoading] = useState(false);
 
   const { user, setUser } = useContext(AuthContext);
   const navigate = useNavigate();
 
+  // Redirect if already logged in
   useEffect(() => {
     if (user) navigate("/");
   }, [user, navigate]);
@@ -48,11 +49,13 @@ const Login = () => {
     try {
       const endpoint = mode === "login" ? "/auth/login" : "/auth/register";
 
-      await API.post(endpoint, form);
+      const res = await API.post(endpoint, form);
 
       if (mode === "login") {
-        const res = await API.get("/auth/me");
+        // ✅ IMPORTANT FIX:
+        // Set user directly from login response
         setUser(res.data);
+
         toast.success("Welcome back 👋");
         navigate("/");
       } else {
@@ -133,7 +136,6 @@ const Login = () => {
                   className="auth-input"
                 />
 
-                {/*  GROUP MODE */}
                 <div className="flex gap-4 text-sm text-gray-300">
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
