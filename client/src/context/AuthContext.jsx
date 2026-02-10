@@ -7,28 +7,45 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  //  Auto-check login on refresh
+  /**
+   * Auto-check logged-in user on app load / refresh
+   * IMPORTANT:
+   * - 401 here is NORMAL when user is not logged in
+   * - Never show toast or error popup here
+   */
   useEffect(() => {
-    API.get("/auth/me")
-      .then((res) => setUser(res.data))
-      .catch(() => setUser(null))
-      .finally(() => setLoading(false));
+    const fetchMe = async () => {
+      try {
+        const res = await API.get("/auth/me");
+        setUser(res.data);
+      } catch (err) {
+        // ❌ Do NOT show toast here
+        // ❌ 401 is expected for logged-out users
+        setUser(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchMe();
   }, []);
 
-  //  Logout (cookie-based)
+  /**
+   * Logout (cookie-based)
+   */
   const logout = async () => {
     try {
       await API.post("/auth/logout");
     } catch (err) {
       console.error("Logout failed");
     } finally {
-      setUser(null); //  important
+      setUser(null); // clear frontend state
     }
   };
 
   return (
     <AuthContext.Provider value={{ user, setUser, logout, loading }}>
-      {children}
+      {!loading && children}
     </AuthContext.Provider>
   );
 };
