@@ -28,15 +28,19 @@ const allowedOrigins = [
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error("Not allowed by CORS"));
+      // allow server-to-server, Postman, health checks
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
       }
+
+      return callback(null, false);
     },
     credentials: true,
   })
 );
+
 
 /* ---------- MIDDLEWARES ---------- */
 app.use(express.json({ limit: "4mb" }));
