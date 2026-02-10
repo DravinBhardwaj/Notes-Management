@@ -23,7 +23,7 @@ export const requireGroup = (req, res, next) => {
   next();
 };
 
-/* ================= POSTING WINDOW ================= */
+/* ================= POSTING WINDOW (FIXED) ================= */
 export const postingAllowed = async (req, res, next) => {
   try {
     let config = await SystemConfig.findOne();
@@ -32,12 +32,24 @@ export const postingAllowed = async (req, res, next) => {
       config = await SystemConfig.create({ postingEnabled: true });
     }
 
-    if (!config.postingEnabled && req.user.role !== "superadmin") {
+    // ✅ Superadmin bypass
+    if (req.user.role === "superadmin") {
+      return next();
+    }
+
+    // 🔒 Only block visibility changes
+    const isVisibilityChange =
+      req.body &&
+      Object.prototype.hasOwnProperty.call(req.body, "visibility");
+
+    if (!config.postingEnabled && isVisibilityChange) {
       return res.status(403).json({
-        message: "Make Public or Private Notes is currently disabled by Superadmin",
+        message:
+          "Make Public or Private Notes is currently disabled by Superadmin",
       });
     }
 
+    // ✅ Allow everything else (create note, PDF, download)
     next();
   } catch (error) {
     res.status(500).json({ message: error.message });
