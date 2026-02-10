@@ -5,24 +5,29 @@ const ServerWakeUp = ({ onReady }) => {
   const [seconds, setSeconds] = useState(0);
 
   useEffect(() => {
-    let interval = setInterval(() => {
+    const baseUrl = import.meta.env.VITE_API_URL.replace("/api", "");
+
+    // timer for seconds counter
+    const timer = setInterval(() => {
       setSeconds((s) => s + 1);
     }, 1000);
 
-    const wakeServer = async () => {
+    // retry ping every 4 seconds
+    const retry = setInterval(async () => {
       try {
-        const baseUrl = import.meta.env.VITE_API_URL.replace("/api", "");
         await axios.get(`${baseUrl}/ping`);
-        clearInterval(interval);
-        onReady();
-      } catch {
-        // keep waiting silently
+        clearInterval(retry);
+        clearInterval(timer);
+        onReady(); // ✅ server is awake
+      } catch (err) {
+        // keep retrying silently
       }
+    }, 4000);
+
+    return () => {
+      clearInterval(timer);
+      clearInterval(retry);
     };
-
-    wakeServer();
-
-    return () => clearInterval(interval);
   }, [onReady]);
 
   return (
