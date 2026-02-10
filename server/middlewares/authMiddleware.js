@@ -5,7 +5,9 @@ const authMiddleware = async (req, res, next) => {
   try {
     const token =
       req.cookies?.token ||
-      req.headers.authorization?.split(" ")[1];
+      (req.headers.authorization &&
+        req.headers.authorization.startsWith("Bearer") &&
+        req.headers.authorization.split(" ")[1]);
 
     if (!token) {
       return res.status(401).json({ message: "Not authorized" });
@@ -18,18 +20,12 @@ const authMiddleware = async (req, res, next) => {
       return res.status(401).json({ message: "User not found" });
     }
 
-    // only NON-superadmin must have groupId
-    if (user.role !== "superadmin" && !user.groupId) {
-      return res.status(403).json({
-        message: "User is not assigned to a group",
-      });
-    }
-
     req.user = user;
     req.userId = user._id;
+
     next();
   } catch (err) {
-    return res.status(401).json({ message: "Invalid token" });
+    return res.status(401).json({ message: "Invalid or expired token" });
   }
 };
 

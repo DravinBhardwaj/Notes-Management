@@ -13,51 +13,26 @@ import {
 
 const router = express.Router();
 
-/* ================= DASHBOARD STATS ================= */
-router.get(
-  "/stats",
-  authMiddleware,
-  allowRoles("superadmin"),
-  getAdminStats
-);
-
-/* ================= GET ALL USERS ================= */
-router.get(
-  "/users",
-  authMiddleware,
-  allowRoles("superadmin"),
-  getAllUsers
-);
-
-/* ================= TOGGLE GROUP ADMIN ================= */
-/*
-  superadmin only
-  toggles isGroupAdmin true/false
-*/
+router.get("/stats", authMiddleware, allowRoles("superadmin"), getAdminStats);
+router.get("/users", authMiddleware, allowRoles("superadmin"), getAllUsers);
 router.put(
   "/users/:id/group-admin",
   authMiddleware,
   allowRoles("superadmin"),
   toggleGroupAdmin
 );
-
-/* ================= DELETE USER ================= */
 router.delete(
   "/users/:id",
   authMiddleware,
   allowRoles("superadmin"),
   deleteUser
 );
-
-/* ================= POSTING WINDOW ================= */
 router.post(
   "/posting-toggle",
   authMiddleware,
   allowRoles("superadmin"),
   togglePostingWindow
 );
-
-/* ================= SYSTEM STATUS ================= */
 router.get(
   "/system-status",
   authMiddleware,

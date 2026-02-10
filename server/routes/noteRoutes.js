@@ -1,40 +1,35 @@
 import express from "express";
 import authMiddleware from "../middlewares/authMiddleware.js";
-import upload from "../utils/multer.js";
-import { deleteNote } from "../controllers/noteController.js";
-import { downloadNotePdf } from "../controllers/noteController.js";
+import {
+  requireGroup,
+  postingAllowed,
+} from "../middlewares/roleMiddleware.js";
 
+import upload from "../utils/multer.js";
 import {
   createNote,
   getNotes,
   getNoteById,
   updateNote,
   uploadPdfController,
+  deleteNote,
+  downloadNotePdf,
 } from "../controllers/noteController.js";
 
 const router = express.Router();
 
-/* CREATE NOTE */
-router.post("/", authMiddleware, createNote);
-
-/* GET ALL NOTES */
-router.get("/", authMiddleware, getNotes);
-
-/*  GET SINGLE NOTE (FOR EDIT) */
-router.get("/:id", authMiddleware, getNoteById);
-
-/*  UPDATE NOTE + REGENERATE PDF */
-router.put("/:id", authMiddleware, updateNote);
-
-/* UPLOAD PDF */
+router.post("/", authMiddleware, requireGroup, postingAllowed, createNote);
+router.get("/", authMiddleware, requireGroup, getNotes);
+router.get("/:id", authMiddleware, requireGroup, getNoteById);
+router.put("/:id", authMiddleware, requireGroup, postingAllowed, updateNote);
 router.post(
   "/upload",
   authMiddleware,
+  requireGroup,
   upload.single("pdf"),
   uploadPdfController
 );
-router.delete("/:id", authMiddleware, deleteNote);
-
-router.get("/:id/download", authMiddleware, downloadNotePdf);
+router.delete("/:id", authMiddleware, requireGroup, deleteNote);
+router.get("/:id/download", authMiddleware, requireGroup, downloadNotePdf);
 
 export default router;
