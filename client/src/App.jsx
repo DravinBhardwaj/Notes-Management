@@ -1,7 +1,10 @@
 import { Routes, Route } from "react-router-dom";
+import { useState } from "react";
+
 import Navbar from "./components/Navbar";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AppLayout from "./layouts/AppLayout";
+import ServerWakeUp from "./components/ServerWakeUp";
 
 import Dashboard from "./pages/Dashboard";
 import CreateNote from "./pages/CreateNote";
@@ -13,11 +16,19 @@ import AdminDashboard from "./admin/AdminDashboard";
 import GroupDashboard from "./pages/GroupDashboard";
 
 function App() {
+  const [serverReady, setServerReady] = useState(false);
+
+  // show wake-up screen until backend is ready
+  if (!serverReady) {
+    return <ServerWakeUp onReady={() => setServerReady(true)} />;
+  }
+
   return (
     <>
       <Navbar />
 
       <Routes>
+        {/* DASHBOARD */}
         <Route
           path="/"
           element={
@@ -27,6 +38,7 @@ function App() {
           }
         />
 
+        {/* CREATE NOTE */}
         <Route
           path="/create"
           element={
@@ -38,6 +50,7 @@ function App() {
           }
         />
 
+        {/* DOCUMENTS */}
         <Route
           path="/documents"
           element={
@@ -49,6 +62,7 @@ function App() {
           }
         />
 
+        {/* GROUP */}
         <Route
           path="/group"
           element={
@@ -60,6 +74,7 @@ function App() {
           }
         />
 
+        {/* EDIT NOTE */}
         <Route
           path="/edit/:noteId"
           element={
@@ -81,8 +96,10 @@ function App() {
           }
         />
 
+        {/* LOGIN */}
         <Route path="/login" element={<Login />} />
 
+        {/* SUPER ADMIN */}
         <Route
           path="/super-admin"
           element={
