@@ -97,25 +97,19 @@ export const loginUser = async (req, res) => {
     let { email, password } = req.body;
 
     if (!email || !password) {
-      return res.status(400).json({
-        message: "All fields are required",
-      });
+      return res.status(400).json({ message: "All fields are required" });
     }
 
     email = email.trim().toLowerCase();
 
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(400).json({
-        message: "Invalid credentials",
-      });
+      return res.status(400).json({ message: "Invalid credentials" });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      return res.status(400).json({
-        message: "Invalid credentials",
-      });
+      return res.status(400).json({ message: "Invalid credentials" });
     }
 
     const token = jwt.sign(
@@ -126,11 +120,11 @@ export const loginUser = async (req, res) => {
 
     res.cookie("token", token, {
       httpOnly: true,
-      sameSite: "lax",
-      secure: false, // set true in production
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
-    /* ---------- FULL AUTH CONTEXT ---------- */
     res.json({
       _id: user._id,
       name: user.name,
@@ -141,11 +135,10 @@ export const loginUser = async (req, res) => {
     });
   } catch (err) {
     console.error("LOGIN ERROR:", err);
-    res.status(500).json({
-      message: "Login failed",
-    });
+    res.status(500).json({ message: "Login failed" });
   }
 };
+
 
 /* ================= GET ME ================= */
 export const getMe = async (req, res) => {
@@ -154,6 +147,12 @@ export const getMe = async (req, res) => {
 
 /* ================= LOGOUT ================= */
 export const logoutUser = async (req, res) => {
-  res.clearCookie("token");
+  res.clearCookie("token", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+  });
+
   res.json({ message: "Logged out successfully" });
 };
+
