@@ -83,7 +83,8 @@ const GroupDashboard = () => {
         {members.map((m) => (
           <div
             key={m._id}
-            className="flex justify-between items-center px-4 py-3 border-b border-white/5"
+            className="flex flex-col sm:flex-row sm:justify-between sm:items-center px-4 py-3 border-b border-white/5 gap-3"
+
           >
             {/* USER INFO */}
             <div>
@@ -96,7 +97,8 @@ const GroupDashboard = () => {
             </div>
 
             {/* ROLE + ACTION */}
-            <div className="flex items-center gap-4">
+            <div className="flex flex-wrap items-center gap-3">
+
               <span className="text-sm">
                 {m.isGroupAdmin ? "⭐ Admin" : "🎓 Student"}
               </span>
