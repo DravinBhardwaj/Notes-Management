@@ -97,9 +97,10 @@ const EditNote = () => {
       return;
     }
 
-    const updated = pages.filter((_, i) => i !== index);
-    setPages(updated);
-    setActivePageId(updated[0].id);
+    const updatedPages = pages.map((p) => ({
+  html: pageRefs.current[p.id]?.innerHTML || "",
+  bgColor: p.bgColor || "#FFF6D5",
+}));
   };
 
   /* ================= LIMIT CONTENT ================= */
