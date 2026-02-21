@@ -12,7 +12,6 @@ const EditNote = () => {
   const navigate = useNavigate();
 
   const [title, setTitle] = useState("");
-  const [pageColor, setPageColor] = useState("#FFF6D5");
   const [pages, setPages] = useState([]);
   const [activePageId, setActivePageId] = useState(null);
   const [pdfUrl, setPdfUrl] = useState("");
@@ -21,24 +20,23 @@ const EditNote = () => {
 
   /* ================= LOAD NOTE ================= */
   useEffect(() => {
-  API.get(`/notes/${noteId}`)
-    .then((res) => {
-      const note = res.data;
+    API.get(`/notes/${noteId}`)
+      .then((res) => {
+        const note = res.data;
 
-      //  FIX: ensure every page has a stable id
-      const fixedPages = note.pages.map((p) => ({
-        ...p,
-        id: p._id || crypto.randomUUID(),
-      }));
+        const fixedPages = note.pages.map((p) => ({
+          ...p,
+          id: p._id || crypto.randomUUID(),
+          bgColor: p.bgColor || "#FFF6D5",
+        }));
 
-      setTitle(note.title);
-      setPages(fixedPages);
-      setPdfUrl(note.pdfUrl);
-      setActivePageId(fixedPages[0]?.id);
-    })
-    .catch(() => alert("Failed to load note"));
-}, [noteId]);
-
+        setTitle(note.title);
+        setPages(fixedPages);
+        setPdfUrl(note.pdfUrl);
+        setActivePageId(fixedPages[0]?.id);
+      })
+      .catch(() => toast.error("Failed to load note"));
+  }, [noteId]);
 
   /* ================= FORMATTING ================= */
   const exec = (cmd, value = null) => {
@@ -46,26 +44,6 @@ const EditNote = () => {
     if (!page) return;
     page.focus();
     document.execCommand(cmd, false, value);
-  };
-
-  /* ================= DOWNLOAD PDF ================= */
-  const handleDownloadPdf = async () => {
-    try {
-      const res = await API.get(`/notes/${noteId}/download`, {
-        responseType: "blob",
-      });
-
-      const url = window.URL.createObjectURL(res.data);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${title}.pdf`;
-      a.click();
-      window.URL.revokeObjectURL(url);
-
-      toast.success("PDF downloaded successfully");
-    } catch {
-      toast.error("Failed to download PDF");
-    }
   };
 
   const applyFontSize = (size) => {
@@ -86,6 +64,15 @@ const EditNote = () => {
     selection.removeAllRanges();
   };
 
+  /* ================= CHANGE PAGE COLOR ================= */
+  const changePageColor = (color) => {
+    setPages((prev) =>
+      prev.map((p) =>
+        p.id === activePageId ? { ...p, bgColor: color } : p
+      )
+    );
+  };
+
   /* ================= ADD PAGE ================= */
   const addPage = () => {
     if (pages.length >= MAX_PAGES) {
@@ -93,7 +80,12 @@ const EditNote = () => {
       return;
     }
 
-    const newPage = { id: Date.now(), html: "" };
+    const newPage = {
+      id: crypto.randomUUID(),
+      html: "",
+      bgColor: "#FFF6D5",
+    };
+
     setPages((prev) => [...prev, newPage]);
     setActivePageId(newPage.id);
   };
@@ -123,7 +115,7 @@ const EditNote = () => {
     try {
       const updatedPages = pages.map((p) => ({
         html: pageRefs.current[p.id]?.innerHTML || "",
-        bgColor: pageColor,
+        bgColor: p.bgColor,
       }));
 
       if (!title.trim() || updatedPages.every((p) => !p.html.trim())) {
@@ -143,15 +135,28 @@ const EditNote = () => {
     }
   };
 
+  /* ================= DOWNLOAD PDF ================= */
+  const handleDownloadPdf = async () => {
+    try {
+      const res = await API.get(`/notes/${noteId}/download`, {
+        responseType: "blob",
+      });
+
+      const url = window.URL.createObjectURL(res.data);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${title}.pdf`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+
+      toast.success("PDF downloaded successfully");
+    } catch {
+      toast.error("Failed to download PDF");
+    }
+  };
+
   return (
     <div className="max-w-5xl mx-auto space-y-5">
-      {/* HEADER */}
-      <div>
-        <h1 className="text-2xl font-semibold">Edit Note</h1>
-        <p className="text-sm text-[var(--color-muted)]">
-          Edit note and regenerate the same PDF
-        </p>
-      </div>
 
       {/* TITLE */}
       <input
@@ -185,10 +190,14 @@ const EditNote = () => {
         </select>
 
         <input type="color" onChange={(e) => exec("foreColor", e.target.value)} />
+
+        {/* Per Page Background Color */}
         <input
           type="color"
-          value={pageColor}
-          onChange={(e) => setPageColor(e.target.value)}
+          value={
+            pages.find((p) => p.id === activePageId)?.bgColor || "#FFF6D5"
+          }
+          onChange={(e) => changePageColor(e.target.value)}
         />
 
         <button
@@ -205,7 +214,8 @@ const EditNote = () => {
           <EditorPage
             key={page.id}
             index={index}
-            pageColor={pageColor}
+            pageColor={page.bgColor}
+            pageHtml={page.html}
             canDelete={pages.length > 1}
             onDelete={deletePage}
             onInput={handleInput}
@@ -213,7 +223,6 @@ const EditNote = () => {
             isActive={activePageId === page.id}
             registerRef={(el) => {
               pageRefs.current[page.id] = el;
-              if (el && page.html) el.innerHTML = page.html;
             }}
           />
         ))}

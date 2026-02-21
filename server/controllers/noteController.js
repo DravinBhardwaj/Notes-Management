@@ -8,20 +8,21 @@ import SystemConfig from "../models/SystemConfig.js";
 
 const cleanHtml = (html = "") => {
   return html
+    .replace(/&nbsp;/gi, " ")
+    .replace(/<div><br><\/div>/gi, "\n")
+    .replace(/<div>/gi, "\n")
+    .replace(/<\/div>/gi, "")
+    .replace(/<p>/gi, "\n")
+    .replace(/<\/p>/gi, "")
     .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<\/p>/gi, "\n")
-    .replace(/<\/div>/gi, "\n")
-    .replace(/<p>/gi, "")
-    .replace(/<div>/gi, "")
-    .replace(/<[^>]*>/g, "")
-    .replace(/\n{2,}/g, "\n\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/\n{3,}/g, "\n\n")
     .trim();
 };
 
 const normalizeGroupId = (id) => id?.toLowerCase();
 
 /* ================= CREATE NOTE ================= */
-/* ❌ Super admin cannot upload notes */
 
 export const createNote = async (req, res) => {
   try {
@@ -34,7 +35,9 @@ export const createNote = async (req, res) => {
     const { title, pages = [], visibility = "private" } = req.body;
 
     if (!title || pages.length === 0) {
-      return res.status(400).json({ message: "Title and content are required" });
+      return res.status(400).json({
+        message: "Title and content are required",
+      });
     }
 
     if (
@@ -51,6 +54,7 @@ export const createNote = async (req, res) => {
     const buffers = [];
 
     doc.on("data", buffers.push.bind(buffers));
+
     doc.on("end", async () => {
       const pdfUrl = await uploadPdf(
         Buffer.concat(buffers),
@@ -70,11 +74,52 @@ export const createNote = async (req, res) => {
       res.status(201).json(note);
     });
 
-    doc.fontSize(20).text(title, { underline: true }).moveDown();
-    pages.forEach((p, i) => {
-      if (i) doc.addPage();
-      doc.fontSize(12).text(cleanHtml(p.html));
+    /* ================= FIRST PAGE ================= */
+
+    const firstPage = pages[0];
+
+    // Draw first page background
+    doc
+      .rect(0, 0, doc.page.width, doc.page.height)
+      .fill(firstPage.bgColor || "#FFFFFF");
+
+    doc.fillColor("#000000");
+
+    // Title as heading (NOT separate page)
+    doc.fontSize(20).text(title, 50, 50, {
+      width: doc.page.width - 100,
     });
+
+    doc.moveDown();
+
+    // First page content
+   doc.fontSize(12).text(
+  cleanHtml(firstPage.html),
+  50,
+  doc.y,
+  {
+    width: doc.page.width - 100,
+    lineGap: 4,
+  }
+);
+
+    /* ================= REMAINING PAGES ================= */
+
+    for (let i = 1; i < pages.length; i++) {
+      const p = pages[i];
+
+      doc.addPage();
+
+      doc
+        .rect(0, 0, doc.page.width, doc.page.height)
+        .fill(p.bgColor || "#FFFFFF");
+
+      doc.fillColor("#000000");
+
+      doc.fontSize(12).text(cleanHtml(p.html), 50, 50, {
+        width: doc.page.width - 100,
+      });
+    }
 
     doc.end();
   } catch (err) {
@@ -94,7 +139,7 @@ export const getNotes = async (req, res) => {
     let query;
 
     if (isSuperAdmin) {
-      query = {}; // ✅ ALL NOTES
+      query = {};
     } else if (isGroupAdmin) {
       query = { groupId };
     } else {
@@ -119,7 +164,8 @@ export const getNotes = async (req, res) => {
 export const getNoteById = async (req, res) => {
   try {
     const note = await Note.findById(req.params.id);
-    if (!note) return res.status(404).json({ message: "Note not found" });
+    if (!note)
+      return res.status(404).json({ message: "Note not found" });
 
     const isOwner = String(note.user) === String(req.userId);
     const isSuperAdmin = req.user.role === "superadmin";
@@ -127,7 +173,8 @@ export const getNoteById = async (req, res) => {
 
     if (
       !isSuperAdmin &&
-      normalizeGroupId(note.groupId) !== normalizeGroupId(req.user.groupId) &&
+      normalizeGroupId(note.groupId) !==
+        normalizeGroupId(req.user.groupId) &&
       !isOwner
     ) {
       return res.status(403).json({ message: "Access denied" });
@@ -155,18 +202,17 @@ export const updateNote = async (req, res) => {
     const { title, pages, visibility } = req.body;
 
     const note = await Note.findById(req.params.id);
-    if (!note) {
+    if (!note)
       return res.status(404).json({ message: "Note not found" });
-    }
 
     const isOwner = String(note.user) === String(req.userId);
     const isSuperAdmin = req.user.role === "superadmin";
     const isGroupAdmin = req.user.isGroupAdmin === true;
 
-    //  Cannot modify notes outside group (unless superadmin or owner)
     if (
       !isSuperAdmin &&
-      normalizeGroupId(note.groupId) !== normalizeGroupId(req.user.groupId) &&
+      normalizeGroupId(note.groupId) !==
+        normalizeGroupId(req.user.groupId) &&
       !isOwner
     ) {
       return res.status(403).json({
@@ -174,38 +220,34 @@ export const updateNote = async (req, res) => {
       });
     }
 
-    //  Basic permission check
     if (!isOwner && !isGroupAdmin && !isSuperAdmin) {
       return res.status(403).json({ message: "Access denied" });
     }
 
     const config = await SystemConfig.findOne();
-  if (
-  visibility === "public" &&
-  note.visibility === "private" &&
-  config?.postingEnabled === false &&
-  !isSuperAdmin
-) {
-  return res.status(403).json({
-    message: "Posting window is disabled by super admin",
-  });
-}
 
+    if (
+      visibility === "public" &&
+      note.visibility === "private" &&
+      config?.postingEnabled === false &&
+      !isSuperAdmin
+    ) {
+      return res.status(403).json({
+        message: "Posting window is disabled by super admin",
+      });
+    }
 
-
-    // ✅ VISIBILITY-ONLY UPDATE (no PDF regeneration)
     if (visibility && !title && !pages) {
       note.visibility = visibility;
       await note.save();
       return res.json(note);
     }
 
-    // ================= PDF REGENERATION =================
-
     const doc = new PDFDocument({ margin: 50 });
     const buffers = [];
 
     doc.on("data", buffers.push.bind(buffers));
+
     doc.on("end", async () => {
       note.title = title ?? note.title;
       note.pages = pages ?? note.pages;
@@ -220,12 +262,60 @@ export const updateNote = async (req, res) => {
       res.json(note);
     });
 
-    doc.fontSize(20).text(title ?? note.title, { underline: true }).moveDown();
+    const updatedPages = pages ?? note.pages;
+    const finalTitle = title ?? note.title;
 
-    (pages ?? note.pages).forEach((p, i) => {
-      if (i) doc.addPage();
-      doc.fontSize(12).text(cleanHtml(p.html));
+    /* ================= FIRST PAGE ================= */
+
+    const firstPage = updatedPages[0];
+
+    doc
+      .rect(0, 0, doc.page.width, doc.page.height)
+      .fill(firstPage.bgColor || "#FFFFFF");
+
+    doc.fillColor("#000000");
+
+    // Title
+    doc.fontSize(20).text(finalTitle, 50, 50, {
+      width: doc.page.width - 100,
     });
+
+    doc.moveDown(1.5);
+
+    // First page content (FIXED)
+    doc.fontSize(12).text(
+      cleanHtml(firstPage.html),
+      50,
+      doc.y,
+      {
+        width: doc.page.width - 100,
+        lineGap: 4,
+      }
+    );
+
+    /* ================= OTHER PAGES ================= */
+
+    for (let i = 1; i < updatedPages.length; i++) {
+      const p = updatedPages[i];
+
+      doc.addPage();
+
+      doc
+        .rect(0, 0, doc.page.width, doc.page.height)
+        .fill(p.bgColor || "#FFFFFF");
+
+      doc.fillColor("#000000");
+
+      doc.fontSize(12).text(
+        cleanHtml(p.html),
+        50,
+        50,
+        {
+          width: doc.page.width - 100,
+          lineGap: 4,
+        }
+      );
+    }
 
     doc.end();
   } catch (err) {
@@ -233,7 +323,6 @@ export const updateNote = async (req, res) => {
     res.status(500).json({ message: "Failed to update note" });
   }
 };
-
 
 /* ================= UPLOAD PDF ================= */
 
@@ -272,7 +361,8 @@ export const uploadPdfController = async (req, res) => {
 export const deleteNote = async (req, res) => {
   try {
     const note = await Note.findById(req.params.id);
-    if (!note) return res.status(404).json({ message: "Note not found" });
+    if (!note)
+      return res.status(404).json({ message: "Note not found" });
 
     const isOwner = String(note.user) === String(req.userId);
     const isSuperAdmin = req.user.role === "superadmin";
@@ -294,9 +384,8 @@ export const deleteNote = async (req, res) => {
 export const downloadNotePdf = async (req, res) => {
   try {
     const note = await Note.findById(req.params.id);
-    if (!note) {
+    if (!note)
       return res.status(404).json({ message: "Note not found" });
-    }
 
     const response = await axios.get(note.pdfUrl, {
       responseType: "arraybuffer",

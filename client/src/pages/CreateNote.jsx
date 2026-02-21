@@ -11,9 +11,12 @@ const CreateNote = () => {
   const { user } = useContext(AuthContext);
 
   const [title, setTitle] = useState("");
-  const [pageColor, setPageColor] = useState("#EAF4FF");
 
-  const [pages, setPages] = useState([{ id: Date.now() }]);
+  // ✅ Each page now stores its own bgColor
+  const [pages, setPages] = useState([
+    { id: Date.now(), bgColor: "#EAF4FF" },
+  ]);
+
   const [activePageId, setActivePageId] = useState(pages[0].id);
 
   const [pdfUrl, setPdfUrl] = useState(null);
@@ -48,6 +51,15 @@ const CreateNote = () => {
     selection.removeAllRanges();
   };
 
+  /* ================= CHANGE PAGE COLOR ================= */
+  const changePageColor = (color) => {
+    setPages((prev) =>
+      prev.map((p) =>
+        p.id === activePageId ? { ...p, bgColor: color } : p
+      )
+    );
+  };
+
   /* ================= ADD PAGE ================= */
   const addPage = () => {
     if (pages.length >= MAX_PAGES) {
@@ -55,7 +67,11 @@ const CreateNote = () => {
       return;
     }
 
-    const newPage = { id: Date.now() };
+    const newPage = {
+      id: Date.now(),
+      bgColor: "#EAF4FF",
+    };
+
     setPages((prev) => [...prev, newPage]);
     setActivePageId(newPage.id);
   };
@@ -84,7 +100,7 @@ const CreateNote = () => {
     try {
       const pagesData = pages.map((p) => ({
         html: pageRefs.current[p.id]?.innerHTML || "",
-        bgColor: pageColor,
+        bgColor: p.bgColor, // ✅ Send correct per-page color
       }));
 
       if (!title.trim() || pagesData.every((p) => !p.html.trim())) {
@@ -98,31 +114,31 @@ const CreateNote = () => {
       });
 
       setPdfUrl(data.pdfUrl);
-setNoteId(data._id); //  THIS LINE WAS MISSING
-toast.success("PDF generated successfully");
-
+      setNoteId(data._id);
+      toast.success("PDF generated successfully");
     } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to generate PDF");
+      toast.error(
+        error.response?.data?.message || "Failed to generate PDF"
+      );
     }
   };
 
-
   const handleDownloadPdf = async () => {
-  try {
-    const res = await API.get(`/notes/${noteId}/download`, {
-      responseType: "blob",
-    });
+    try {
+      const res = await API.get(`/notes/${noteId}/download`, {
+        responseType: "blob",
+      });
 
-    const url = window.URL.createObjectURL(res.data);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${title}.pdf`;
-    a.click();
-    window.URL.revokeObjectURL(url);
-  } catch (error) {
-    toast.error("Failed to download PDF");
-  }
-};
+      const url = window.URL.createObjectURL(res.data);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${title}.pdf`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      toast.error("Failed to download PDF");
+    }
+  };
 
   return (
     <div className="max-w-5xl mx-auto space-y-5">
@@ -166,14 +182,20 @@ toast.success("PDF generated successfully");
           <option value="22px">XL</option>
         </select>
 
+        {/* Text Color */}
         <input
           type="color"
           onChange={(e) => exec("foreColor", e.target.value)}
         />
+
+        {/* Page Background Color (Per Page) */}
         <input
           type="color"
-          value={pageColor}
-          onChange={(e) => setPageColor(e.target.value)}
+          value={
+            pages.find((p) => p.id === activePageId)?.bgColor ||
+            "#EAF4FF"
+          }
+          onChange={(e) => changePageColor(e.target.value)}
         />
 
         <button
@@ -190,7 +212,7 @@ toast.success("PDF generated successfully");
           <EditorPage
             key={page.id}
             index={index}
-            pageColor={pageColor}
+            pageColor={page.bgColor} // ✅ Pass correct color
             canDelete={pages.length > 1}
             onDelete={deletePage}
             onInput={handleInput}
@@ -212,18 +234,17 @@ toast.success("PDF generated successfully");
           Generate PDF
         </button>
 
-       <button
-  disabled={!pdfUrl || !noteId}
-  onClick={handleDownloadPdf}
-  className={`px-6 py-2 rounded-lg border ${
-    pdfUrl
-      ? "hover:bg-[var(--color-surface)]"
-      : "opacity-50 cursor-not-allowed"
-  }`}
->
-  Download PDF
-</button>
-
+        <button
+          disabled={!pdfUrl || !noteId}
+          onClick={handleDownloadPdf}
+          className={`px-6 py-2 rounded-lg border ${
+            pdfUrl
+              ? "hover:bg-[var(--color-surface)]"
+              : "opacity-50 cursor-not-allowed"
+          }`}
+        >
+          Download PDF
+        </button>
       </div>
     </div>
   );

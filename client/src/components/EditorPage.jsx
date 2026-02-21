@@ -3,6 +3,7 @@ import { useEffect, useRef } from "react";
 const EditorPage = ({
   index,
   pageColor,
+  pageHtml,        // ✅ initial html for edit mode
   onDelete,
   canDelete,
   onInput,
@@ -12,12 +13,21 @@ const EditorPage = ({
 }) => {
   const localRef = useRef(null);
 
+  /* ================= REGISTER REF ================= */
   useEffect(() => {
     if (localRef.current && registerRef) {
       registerRef(localRef.current);
     }
   }, []);
 
+  /* ================= LOAD INITIAL HTML (ONLY ONCE) ================= */
+  useEffect(() => {
+    if (localRef.current && pageHtml) {
+      localRef.current.innerHTML = pageHtml;
+    }
+  }, []);
+
+  /* ================= AUTO FOCUS ACTIVE PAGE ================= */
   useEffect(() => {
     if (isActive && localRef.current) {
       localRef.current.focus();
@@ -26,6 +36,7 @@ const EditorPage = ({
 
   return (
     <div className="relative">
+      {/* Delete Button */}
       {canDelete && (
         <button
           onClick={() => onDelete(index)}
@@ -36,6 +47,7 @@ const EditorPage = ({
         </button>
       )}
 
+      {/* Editable Page */}
       <div
         ref={localRef}
         contentEditable
