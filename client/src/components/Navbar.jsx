@@ -150,7 +150,7 @@ const Navbar = () => {
       {user && open && (
         <div className="md:hidden border-t border-white/10 bg-[var(--color-surface)] px-6 py-4 space-y-3 text-sm">
           {navLink("/", "Dashboard", () => setOpen(false))}
-          {navLink("/create", "Create Note", () => setOpen(false))}
+          {navLink("/create", "Plan Study", () => setOpen(false))}
           {navLink("/documents", "Documents", () => setOpen(false))}
 
           {user.role === "superadmin" &&
