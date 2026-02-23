@@ -12,7 +12,6 @@ const CreateNote = () => {
 
   const [title, setTitle] = useState("");
 
-  // ✅ Each page now stores its own bgColor
   const [pages, setPages] = useState([
     { id: Date.now(), bgColor: "#EAF4FF" },
   ]);
@@ -24,32 +23,21 @@ const CreateNote = () => {
 
   const pageRefs = useRef({});
 
-  /* ================= BASIC COMMAND ================= */
-  const exec = (command, value = null) => {
+  /* ================= SAFE TEXT INSERT ================= */
+
+  const insertText = (text) => {
     const page = pageRefs.current[activePageId];
     if (!page) return;
     page.focus();
-    document.execCommand(command, false, value);
+    document.execCommand("insertText", false, text);
   };
 
-  /* ================= FONT SIZE ================= */
-  const applyFontSize = (size) => {
-    const page = pageRefs.current[activePageId];
-    if (!page) return;
-
-    page.focus();
-    const selection = window.getSelection();
-    if (!selection.rangeCount) return;
-
-    const range = selection.getRangeAt(0);
-    const span = document.createElement("span");
-    span.style.fontSize = size;
-    span.style.color = "#000";
-
-    span.appendChild(range.extractContents());
-    range.insertNode(span);
-    selection.removeAllRanges();
-  };
+  const insertBullet = () => insertText("• ");
+  const insertNumber = () => insertText("1. ");
+  const insertLine = () =>
+    insertText("\n-----------------------------\n");
+  const insertDate = () =>
+    insertText(new Date().toLocaleDateString());
 
   /* ================= CHANGE PAGE COLOR ================= */
   const changePageColor = (color) => {
@@ -100,7 +88,7 @@ const CreateNote = () => {
     try {
       const pagesData = pages.map((p) => ({
         html: pageRefs.current[p.id]?.innerHTML || "",
-        bgColor: p.bgColor, // ✅ Send correct per-page color
+        bgColor: p.bgColor,
       }));
 
       if (!title.trim() || pagesData.every((p) => !p.html.trim())) {
@@ -142,6 +130,7 @@ const CreateNote = () => {
 
   return (
     <div className="max-w-5xl mx-auto space-y-5">
+
       {/* HEADER */}
       <div>
         <h1 className="text-2xl font-semibold">Create Note</h1>
@@ -158,46 +147,51 @@ const CreateNote = () => {
         className="w-full bg-[var(--color-surface)] border rounded-lg px-4 py-3 text-lg outline-none"
       />
 
-      {/* TOOLBAR */}
-      <div className="flex flex-wrap gap-2 border p-2 rounded-lg bg-[var(--color-surface)]">
-        {["bold", "italic", "underline"].map((cmd) => (
-          <button
-            key={cmd}
-            onClick={() => exec(cmd)}
-            className="px-3 py-1 bg-[var(--color-primary)] text-black rounded"
-          >
-            {cmd[0].toUpperCase()}
-          </button>
-        ))}
+      {/* SAFE TOOLBAR */}
+      <div className="flex flex-wrap gap-3 border p-3 rounded-lg bg-[var(--color-surface)]">
 
-        <button onClick={() => exec("insertUnorderedList")}>•</button>
-        <button onClick={() => exec("insertOrderedList")}>1.</button>
-
-        <select
-          onChange={(e) => applyFontSize(e.target.value)}
-          className="px-3 py-1 bg-[var(--color-primary)] text-black rounded"
+        <button
+          onClick={insertBullet}
+          className="px-3 py-1 border rounded"
         >
-          <option value="14px">Normal</option>
-          <option value="18px">Large</option>
-          <option value="22px">XL</option>
-        </select>
+          • Bullet
+        </button>
 
-        {/* Text Color */}
-        <input
-          type="color"
-          onChange={(e) => exec("foreColor", e.target.value)}
-        />
+        <button
+          onClick={insertNumber}
+          className="px-3 py-1 border rounded"
+        >
+          1. Number
+        </button>
 
-        {/* Page Background Color (Per Page) */}
-        <input
-          type="color"
-          value={
-            pages.find((p) => p.id === activePageId)?.bgColor ||
-            "#EAF4FF"
-          }
-          onChange={(e) => changePageColor(e.target.value)}
-        />
+        <button
+          onClick={insertLine}
+          className="px-3 py-1 border rounded"
+        >
+          Divider
+        </button>
 
+        <button
+          onClick={insertDate}
+          className="px-3 py-1 border rounded"
+        >
+          Insert Date
+        </button>
+
+        {/* Page Background Color */}
+        <div className="flex items-center gap-2">
+          <span className="text-sm">Page Color:</span>
+          <input
+            type="color"
+            value={
+              pages.find((p) => p.id === activePageId)?.bgColor ||
+              "#EAF4FF"
+            }
+            onChange={(e) => changePageColor(e.target.value)}
+          />
+        </div>
+
+        {/* Add Page */}
         <button
           onClick={addPage}
           className="px-3 py-1 bg-[var(--color-primary)] text-black rounded"
@@ -212,7 +206,7 @@ const CreateNote = () => {
           <EditorPage
             key={page.id}
             index={index}
-            pageColor={page.bgColor} // ✅ Pass correct color
+            pageColor={page.bgColor}
             canDelete={pages.length > 1}
             onDelete={deletePage}
             onInput={handleInput}

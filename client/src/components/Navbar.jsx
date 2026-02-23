@@ -120,7 +120,7 @@ const Navbar = () => {
             {/* DESKTOP NAV */}
             <nav className="hidden md:flex items-center gap-8 text-sm">
               {navLink("/", "Dashboard")}
-              {navLink("/create", "Create Note")}
+              {navLink("/create", "Plan Study")}
               {navLink("/documents", "Documents")}
 
               {/*  SUPER ADMIN */}

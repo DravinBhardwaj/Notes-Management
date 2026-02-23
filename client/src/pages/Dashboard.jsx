@@ -34,7 +34,7 @@ const Dashboard = () => {
           <div className="flex gap-4 pt-4">
             <Link to="/create">
               <button className="bg-[var(--color-primary)] text-black px-6 py-3 rounded-lg font-medium">
-                Create a Note
+                Plan Your Goals
               </button>
             </Link>
 
@@ -86,7 +86,7 @@ const Dashboard = () => {
 
           <Link to="/create">
             <button className="mt-6 bg-[var(--color-primary)] text-black px-8 py-3 rounded-xl">
-              Start Writing Notes
+              Start Planning Study
             </button>
           </Link>
         </div>
