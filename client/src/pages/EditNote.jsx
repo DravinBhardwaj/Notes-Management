@@ -48,7 +48,7 @@ const EditNote = () => {
   };
 
   const insertBullet = () => insertText("• ");
-  const insertNumber = () => insertText("1. ");
+  
   const insertLine = () =>
     insertText("\n-----------------------------\n");
   const insertDate = () =>
@@ -166,12 +166,7 @@ const EditNote = () => {
           • Bullet
         </button>
 
-        <button
-          onClick={insertNumber}
-          className="px-3 py-1 border rounded"
-        >
-          1. Number
-        </button>
+       
 
         <button
           onClick={insertLine}
