@@ -14,6 +14,8 @@ import EditNote from "./pages/EditNote";
 import PdfViewer from "./pages/PdfViewer";
 import AdminDashboard from "./admin/AdminDashboard";
 import GroupDashboard from "./pages/GroupDashboard";
+import AiNote from "./pages/AiNote";
+import ChatPdf from "./pages/ChatPdf";
 
 function App() {
   const [serverReady, setServerReady] = useState(false);
@@ -106,6 +108,29 @@ function App() {
             <ProtectedRoute allowedRoles={["superadmin"]}>
               <AppLayout>
                 <AdminDashboard />
+              </AppLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Ai Routes */}
+        <Route
+          path="/ai/:noteId"
+          element={
+            <ProtectedRoute>
+              <AppLayout>
+                <AiNote />
+              </AppLayout>
+            </ProtectedRoute>
+          }
+        />
+        {/* Chat Pdf */}
+        <Route
+          path="/chat/:noteId"
+          element={
+            <ProtectedRoute>
+              <AppLayout>
+                <ChatPdf />
               </AppLayout>
             </ProtectedRoute>
           }

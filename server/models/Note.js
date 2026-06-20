@@ -7,14 +7,30 @@ const pageSchema = new mongoose.Schema({
 
 const noteSchema = new mongoose.Schema(
   {
-    title: { type: String, required: true },
+    title: {
+      type: String,
+      required: true,
+    },
+
+    // NEW
+    summary: {
+      type: String,
+      default: "",
+    },
+
+    // NEW
+    questions: {
+      type: [String],
+      default: [],
+    },
 
     pages: [pageSchema],
 
     type: {
       type: String,
-      enum: ["generated", "uploaded"], // 🔥 IMPORTANT
+      enum: ["generated", "uploaded"],
       required: true,
+      index:true,
     },
 
     visibility: {
@@ -27,6 +43,7 @@ const noteSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
+      index:true,
     },
 
     groupId: {

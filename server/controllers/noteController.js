@@ -3,6 +3,10 @@ import uploadPdf from "../utils/uploadPdf.js";
 import PDFDocument from "pdfkit";
 import axios from "axios";
 import SystemConfig from "../models/SystemConfig.js";
+import pdfParse from "pdf-parse";
+import PdfChunk from "../models/PdfChunk.js";
+import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
+import { generateEmbedding } from "../utils/generateEmbedding.js";
 
 /* ================= HELPERS ================= */
 
@@ -56,22 +60,73 @@ export const createNote = async (req, res) => {
     doc.on("data", buffers.push.bind(buffers));
 
     doc.on("end", async () => {
-      const pdfUrl = await uploadPdf(
-        Buffer.concat(buffers),
-        `${title.replace(/\s+/g, "_")}-${Date.now()}`
-      );
+      try {
+        const pdfUrl = await uploadPdf(
+          Buffer.concat(buffers),
+          `${title.replace(/\s+/g, "_")}-${Date.now()}`
+        );
 
-      const note = await Note.create({
-        title,
-        pages,
-        type: "generated",
-        visibility,
-        pdfUrl,
-        user: req.userId,
-        groupId: normalizeGroupId(req.user.groupId),
-      });
+        const note = await Note.create({
+          title,
+          pages,
+          type: "generated",
+          visibility,
+          pdfUrl,
+          user: req.userId,
+          groupId: normalizeGroupId(req.user.groupId),
+        });
 
-      res.status(201).json(note);
+        /* ================= CREATE CHUNKS ================= */
+
+        const allText = pages
+          .map((page) => cleanHtml(page.html))
+          .join("\n\n");
+
+        const splitter =
+          new RecursiveCharacterTextSplitter({
+            chunkSize: 1500,
+            chunkOverlap: 300,
+          });
+
+        const chunks =
+          await splitter.createDocuments([
+            allText,
+          ]);
+
+        const docs = [];
+
+        for (let i = 0; i < chunks.length; i++) {
+          const embedding =
+            await generateEmbedding(
+              chunks[i].pageContent
+            );
+          if (!embedding?.length) {
+            continue;
+          }
+          docs.push({
+            noteId: note._id,
+            pageNumber: null,
+            chunkIndex: i,
+            text: chunks[i].pageContent,
+            embedding,
+          });
+        }
+
+        if (docs.length > 0) {
+          await PdfChunk.insertMany(docs);
+        }
+
+        res.status(201).json(note);
+      } catch (error) {
+        console.error(
+          "CREATE NOTE CHUNK ERROR:",
+          error
+        );
+
+        res.status(500).json({
+          message: "Failed to create note",
+        });
+      }
     });
 
     /* ================= FIRST PAGE ================= */
@@ -93,15 +148,15 @@ export const createNote = async (req, res) => {
     doc.moveDown();
 
     // First page content
-   doc.fontSize(12).text(
-  cleanHtml(firstPage.html),
-  50,
-  doc.y,
-  {
-    width: doc.page.width - 100,
-    lineGap: 4,
-  }
-);
+    doc.fontSize(12).text(
+      cleanHtml(firstPage.html),
+      50,
+      doc.y,
+      {
+        width: doc.page.width - 100,
+        lineGap: 4,
+      }
+    );
 
     /* ================= REMAINING PAGES ================= */
 
@@ -174,7 +229,7 @@ export const getNoteById = async (req, res) => {
     if (
       !isSuperAdmin &&
       normalizeGroupId(note.groupId) !==
-        normalizeGroupId(req.user.groupId) &&
+      normalizeGroupId(req.user.groupId) &&
       !isOwner
     ) {
       return res.status(403).json({ message: "Access denied" });
@@ -212,7 +267,7 @@ export const updateNote = async (req, res) => {
     if (
       !isSuperAdmin &&
       normalizeGroupId(note.groupId) !==
-        normalizeGroupId(req.user.groupId) &&
+      normalizeGroupId(req.user.groupId) &&
       !isOwner
     ) {
       return res.status(403).json({
@@ -249,17 +304,72 @@ export const updateNote = async (req, res) => {
     doc.on("data", buffers.push.bind(buffers));
 
     doc.on("end", async () => {
-      note.title = title ?? note.title;
-      note.pages = pages ?? note.pages;
-      note.visibility = visibility ?? note.visibility;
+      try {
+        note.title = title ?? note.title;
+        note.pages = pages ?? note.pages;
+        note.visibility = visibility ?? note.visibility;
 
-      note.pdfUrl = await uploadPdf(
-        Buffer.concat(buffers),
-        `${note.title.replace(/\s+/g, "_")}-${Date.now()}`
-      );
+        note.pdfUrl = await uploadPdf(
+          Buffer.concat(buffers),
+          `${(title ?? note.title)
+            .replace(/\s+/g, "_")}-${Date.now()}`
+        );
 
-      await note.save();
-      res.json(note);
+        await note.save();
+
+        await PdfChunk.deleteMany({
+          noteId: note._id,
+        });
+
+        const allText = (pages ?? note.pages)
+          .map((page) => cleanHtml(page.html))
+          .join("\n\n");
+
+        const splitter =
+          new RecursiveCharacterTextSplitter({
+            chunkSize: 1500,
+            chunkOverlap: 300,
+          });
+
+        const chunks =
+          await splitter.createDocuments([
+            allText,
+          ]);
+
+        const docs = [];
+
+        for (let i = 0; i < chunks.length; i++) {
+          const embedding =
+            await generateEmbedding(
+              chunks[i].pageContent
+            );
+          if (!embedding?.length) {
+            continue;
+          }
+          docs.push({
+            noteId: note._id,
+            pageNumber: null,
+            chunkIndex: i,
+            text: chunks[i].pageContent,
+            embedding,
+          });
+        }
+
+        if (docs.length > 0) {
+          await PdfChunk.insertMany(docs);
+        }
+
+        res.json(note);
+      } catch (error) {
+        console.error(
+          "UPDATE NOTE CHUNK ERROR:",
+          error
+        );
+
+        res.status(500).json({
+          message: "Failed to update note",
+        });
+      }
     });
 
     const updatedPages = pages ?? note.pages;
@@ -334,14 +444,29 @@ export const uploadPdfController = async (req, res) => {
       });
     }
 
+    const title = req.file.originalname.replace(/\.pdf$/i, "");
+
+    // Upload PDF to Cloudinary
     const pdfUrl = await uploadPdf(
       req.file.buffer,
-      req.file.originalname.replace(/\.pdf$/i, "")
+      title
     );
 
+    // Extract text
+    const pdfData = await pdfParse(req.file.buffer);
+
+    const extractedText = pdfData.text?.trim() || "";
+
+    if (!extractedText) {
+      return res.status(400).json({
+        message: "No text found in PDF",
+      });
+    }
+
+    // Create note first
     const note = await Note.create({
-      title: req.file.originalname.replace(/\.pdf$/i, ""),
-      pages: [],
+      title,
+      pages: [], // no PDF text here anymore
       type: "uploaded",
       visibility: "private",
       pdfUrl,
@@ -349,10 +474,50 @@ export const uploadPdfController = async (req, res) => {
       groupId: normalizeGroupId(req.user.groupId),
     });
 
+    // Chunking
+    const splitter =
+      new RecursiveCharacterTextSplitter({
+        chunkSize: 1500,
+        chunkOverlap: 300,
+      });
+
+    const chunks =
+      await splitter.createDocuments([
+        extractedText,
+      ]);
+
+    // Save chunks
+    const docs = [];
+
+    for (let i = 0; i < chunks.length; i++) {
+      const embedding =
+        await generateEmbedding(
+          chunks[i].pageContent
+        );
+      if (!embedding?.length) {
+        continue;
+      }
+      docs.push({
+        noteId: note._id,
+        pageNumber: null,
+        chunkIndex: i,
+        text: chunks[i].pageContent,
+        embedding,
+      });
+    }
+
+    if (docs.length > 0) {
+      await PdfChunk.insertMany(docs);
+    }
+
     res.status(201).json(note);
+
   } catch (err) {
     console.error("UPLOAD PDF ERROR:", err);
-    res.status(500).json({ message: "PDF upload failed" });
+
+    res.status(500).json({
+      message: "PDF upload failed",
+    });
   }
 };
 
@@ -361,21 +526,47 @@ export const uploadPdfController = async (req, res) => {
 export const deleteNote = async (req, res) => {
   try {
     const note = await Note.findById(req.params.id);
-    if (!note)
-      return res.status(404).json({ message: "Note not found" });
 
-    const isOwner = String(note.user) === String(req.userId);
-    const isSuperAdmin = req.user.role === "superadmin";
-    const isGroupAdmin = req.user.isGroupAdmin === true;
-
-    if (!isOwner && !isGroupAdmin && !isSuperAdmin) {
-      return res.status(403).json({ message: "Access denied" });
+    if (!note) {
+      return res.status(404).json({
+        message: "Note not found",
+      });
     }
 
+    const isOwner =
+      String(note.user) === String(req.userId);
+
+    const isSuperAdmin =
+      req.user.role === "superadmin";
+
+    const isGroupAdmin =
+      req.user.isGroupAdmin === true;
+
+    if (
+      !isOwner &&
+      !isGroupAdmin &&
+      !isSuperAdmin
+    ) {
+      return res.status(403).json({
+        message: "Access denied",
+      });
+    }
+
+    // Delete all chunks of this note
+    await PdfChunk.deleteMany({
+      noteId: note._id,
+    });
+
+    // Delete note
     await note.deleteOne();
-    res.json({ message: "Note deleted permanently" });
+
+    res.json({
+      message: "Note deleted permanently",
+    });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(500).json({
+      message: err.message,
+    });
   }
 };
 

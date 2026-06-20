@@ -12,7 +12,7 @@ const PdfCard = ({
   noteId,
   visibility = "private",
   owner,
-  groupId,                 //  optional (for superadmin UI)
+  groupId,
   onDelete,
   onVisibilityChange,
 }) => {
@@ -26,17 +26,16 @@ const PdfCard = ({
 
   /* ================= PERMISSIONS ================= */
 
-  // visibility change → admin / superadmin
   const canChangeVisibility =
     user?.role === "superadmin" || user?.isGroupAdmin === true;
 
-  // delete → admin / superadmin (backend enforces final rule)
   const canDelete =
     user?.role === "superadmin" || user?.isGroupAdmin === true;
 
-  // download → public OR owner OR superadmin
   const canDownload =
-    visibility === "public" || isOwner || user?.role === "superadmin";
+    visibility === "public" ||
+    isOwner ||
+    user?.role === "superadmin";
 
   const showMakePublic =
     canChangeVisibility && visibility === "private";
@@ -48,56 +47,101 @@ const PdfCard = ({
 
   const handleMakePublic = async () => {
     try {
-      await API.put(`/notes/${noteId}`, { visibility: "public" });
+      await API.put(`/notes/${noteId}`, {
+        visibility: "public",
+      });
+
       toast.success(`"${title}" is now PUBLIC`);
+
       onVisibilityChange?.(noteId, "public");
     } catch (err) {
-      toast.error(err.response?.data?.message || "Action not allowed");
+      toast.error(
+        err.response?.data?.message || "Action not allowed"
+      );
     }
   };
 
   const handleMakePrivate = async () => {
     try {
-      await API.put(`/notes/${noteId}`, { visibility: "private" });
+      await API.put(`/notes/${noteId}`, {
+        visibility: "private",
+      });
+
       toast.success(`"${title}" is now PRIVATE`);
+
       onVisibilityChange?.(noteId, "private");
     } catch (err) {
-      toast.error(err.response?.data?.message || "Action not allowed");
+      toast.error(
+        err.response?.data?.message || "Action not allowed"
+      );
     }
   };
 
   const handleDownload = async () => {
     try {
-      const res = await API.get(`/notes/${noteId}/download`, {
-        responseType: "blob",
-      });
+      const res = await API.get(
+        `/notes/${noteId}/download`,
+        {
+          responseType: "blob",
+        }
+      );
 
       const url = window.URL.createObjectURL(res.data);
+
       const a = document.createElement("a");
       a.href = url;
       a.download = `${title}.pdf`;
       a.click();
+
       window.URL.revokeObjectURL(url);
     } catch {
       toast.error("Failed to download PDF");
     }
   };
 
-  /* ================= RENDER ================= */
-
   return (
     <div className="bg-[var(--color-surface)] border rounded-xl p-5">
-      {/* TITLE */}
-      <h3 className="font-semibold truncate">{title}</h3>
+      
+      {/* AI TOOLS TOP RIGHT */}
+      {/* AI TOOLS + CHAT PDF */}
+{/* TOP SECTION */}
+{/* TOP SECTION */}
+<div className="mb-4">
 
-      {/* GROUP INFO (SUPER ADMIN ONLY) */}
+  <h3 className="font-semibold break-words text-lg mb-3">
+    {title}
+  </h3>
+
+  {(isOwner || user?.role === "superadmin") && (
+    <div className="flex flex-wrap gap-2">
+
+      <Link
+        to={`/chat/${noteId}`}
+        className="px-3 py-1 rounded bg-blue-600 text-white text-xs hover:bg-blue-700"
+      >
+        💬 Chat PDF
+      </Link>
+
+      <Link
+        to={`/ai/${noteId}`}
+        className="px-3 py-1 rounded bg-purple-600 text-white text-xs hover:bg-purple-700"
+      >
+        🤖 AI Tools
+      </Link>
+
+    </div>
+  )}
+
+</div>
+
+      {/* GROUP INFO */}
       {user?.role === "superadmin" && groupId && (
         <div className="text-xs mt-1 text-purple-400">
           Group: {groupId}
         </div>
       )}
 
-      {/* VISIBILITY BADGE */}
+      {/* VISIBILITY */}
       <span
         className={`inline-block mt-2 text-xs px-2 py-1 rounded ${
           visibility === "public"
@@ -114,7 +158,8 @@ const PdfCard = ({
       </p>
 
       {/* ACTIONS */}
-      <div className="flex flex-wrap gap-4 mt-4 text-sm">
+      <div className="flex items-center gap-4 mt-6 text-sm flex-wrap">
+        
         <Link
           to={`/view-pdf?url=${encodeURIComponent(fileUrl)}`}
           className="text-[var(--color-primary)] hover:underline"
@@ -131,7 +176,7 @@ const PdfCard = ({
           </button>
         )}
 
-        {/* EDIT → only generated notes */}
+        {/* EDIT ONLY FOR GENERATED NOTES */}
         {type === "generated" &&
           (isOwner || user?.role === "superadmin") && (
             <Link

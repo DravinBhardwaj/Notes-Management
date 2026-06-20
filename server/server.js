@@ -13,6 +13,8 @@ import adminRoutes from "./routes/adminRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
 import groupRoutes from "./routes/groupRoutes.js";
 
+import aiRoutes from "./routes/aiRoutes.js";
+
 // Connect DB
 connectDB();
 
@@ -58,6 +60,7 @@ app.use("/api/users", userRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/notes", noteRoutes);
 app.use("/api/group", groupRoutes);
+app.use("/api/ai", aiRoutes);
 
 /* =========================================================
    SERVER

@@ -1,4 +1,4 @@
-import { useState, useRef, useContext } from "react";
+import { useState, useRef, useContext, useEffect } from "react";
 import EditorPage from "../components/EditorPage";
 import API from "../utils/api";
 import { AuthContext } from "../context/AuthContext";
@@ -20,9 +20,64 @@ const CreateNote = () => {
 
   const [pdfUrl, setPdfUrl] = useState(null);
   const [noteId, setNoteId] = useState(null);
-
+  const [draftLoaded, setDraftLoaded] = useState(false);
   const pageRefs = useRef({});
 
+
+  useEffect(() => {
+  const savedDraft =
+    localStorage.getItem("noteDraft");
+
+  if (savedDraft) {
+    const draft =
+      JSON.parse(savedDraft);
+
+    setTitle(draft.title || "");
+
+    if (draft.pages?.length) {
+      setPages(
+        draft.pages.map((p) => ({
+          id: p.id,
+          bgColor: p.bgColor,
+        }))
+      );
+
+      setActivePageId(
+        draft.pages[0].id
+      );
+    }
+  }
+
+  setDraftLoaded(true);
+}, []);
+
+  useEffect(() => {
+  if (!draftLoaded) return;
+
+  const saveDraft = () => {
+    const pagesData = pages.map((p) => ({
+      id: p.id,
+      bgColor: p.bgColor,
+      html:
+        pageRefs.current[p.id]
+          ?.innerHTML || "",
+    }));
+
+    localStorage.setItem(
+      "noteDraft",
+      JSON.stringify({
+        title,
+        pages: pagesData,
+      })
+    );
+  };
+
+  const interval =
+    setInterval(saveDraft, 2000);
+
+  return () =>
+    clearInterval(interval);
+}, [title, pages, draftLoaded]);
   /* ================= SAFE TEXT INSERT ================= */
 
   const insertText = (text) => {
@@ -100,6 +155,8 @@ const CreateNote = () => {
         pages: pagesData,
       });
 
+      localStorage.removeItem("noteDraft");
+
       setPdfUrl(data.pdfUrl);
       setNoteId(data._id);
       toast.success("PDF generated successfully");
@@ -156,7 +213,7 @@ const CreateNote = () => {
           • Bullet
         </button>
 
-       
+
 
         <button
           onClick={insertLine}
@@ -207,7 +264,21 @@ const CreateNote = () => {
             onFocus={() => setActivePageId(page.id)}
             isActive={activePageId === page.id}
             registerRef={(el) => {
+              if (!el) return;
+
               pageRefs.current[page.id] = el;
+
+              const draft = JSON.parse(
+                localStorage.getItem("noteDraft") || "{}"
+              );
+
+              const savedPage = draft.pages?.find(
+                (p) => p.id === page.id
+              );
+
+              if (savedPage?.html) {
+                el.innerHTML = savedPage.html;
+              }
             }}
           />
         ))}
@@ -225,11 +296,10 @@ const CreateNote = () => {
         <button
           disabled={!pdfUrl || !noteId}
           onClick={handleDownloadPdf}
-          className={`px-6 py-2 rounded-lg border ${
-            pdfUrl
-              ? "hover:bg-[var(--color-surface)]"
-              : "opacity-50 cursor-not-allowed"
-          }`}
+          className={`px-6 py-2 rounded-lg border ${pdfUrl
+            ? "hover:bg-[var(--color-surface)]"
+            : "opacity-50 cursor-not-allowed"
+            }`}
         >
           Download PDF
         </button>
