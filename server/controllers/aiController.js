@@ -1,7 +1,7 @@
 import Note from "../models/Note.js";
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import PdfChunk from "../models/PdfChunk.js";
-import { searchChunks } from "../utils/vectorSearch.js";
+import { searchChunks } from "../utils/VectorSearch.js";
 /* ================= CLEAN HTML ================= */
 
 const cleanHtml = (html = "") => {
