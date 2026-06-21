@@ -9,6 +9,7 @@ const MAX_CHARS_PER_PAGE = 3500;
 
 const CreateNote = () => {
   const { user } = useContext(AuthContext);
+  const draftKey = `noteDraft_${user?.groupId || "default"}`;
 
   const [title, setTitle] = useState("");
 
@@ -23,61 +24,65 @@ const CreateNote = () => {
   const [draftLoaded, setDraftLoaded] = useState(false);
   const pageRefs = useRef({});
 
-
   useEffect(() => {
-  const savedDraft =
-    localStorage.getItem("noteDraft");
+    const savedDraft =
+      localStorage.getItem(draftKey);
 
-  if (savedDraft) {
-    const draft =
-      JSON.parse(savedDraft);
+    if (savedDraft) {
+      const draft =
+        JSON.parse(savedDraft);
 
-    setTitle(draft.title || "");
+      setTitle(draft.title || "");
 
-    if (draft.pages?.length) {
-      setPages(
-        draft.pages.map((p) => ({
-          id: p.id,
-          bgColor: p.bgColor,
-        }))
-      );
+      if (draft.pages?.length) {
+        setPages(
+          draft.pages.map((p) => ({
+            id: p.id,
+            bgColor: p.bgColor,
+          }))
+        );
 
-      setActivePageId(
-        draft.pages[0].id
-      );
+        setActivePageId(
+          draft.pages[0].id
+        );
+      }
     }
-  }
 
-  setDraftLoaded(true);
-}, []);
+    setDraftLoaded(true);
+  }, [draftKey]);
 
   useEffect(() => {
-  if (!draftLoaded) return;
+    if (!draftLoaded) return;
 
-  const saveDraft = () => {
-    const pagesData = pages.map((p) => ({
-      id: p.id,
-      bgColor: p.bgColor,
-      html:
-        pageRefs.current[p.id]
-          ?.innerHTML || "",
-    }));
+    const saveDraft = () => {
+      const pagesData = pages.map((p) => ({
+        id: p.id,
+        bgColor: p.bgColor,
+        html:
+          pageRefs.current[p.id]
+            ?.innerHTML || "",
+      }));
 
-    localStorage.setItem(
-      "noteDraft",
-      JSON.stringify({
-        title,
-        pages: pagesData,
-      })
-    );
-  };
+      localStorage.setItem(
+        draftKey,
+        JSON.stringify({
+          title,
+          pages: pagesData,
+        })
+      );
+    };
 
-  const interval =
-    setInterval(saveDraft, 2000);
+    const interval =
+      setInterval(saveDraft, 2000);
 
-  return () =>
-    clearInterval(interval);
-}, [title, pages, draftLoaded]);
+    return () =>
+      clearInterval(interval);
+  }, [
+    title,
+    pages,
+    draftLoaded,
+    draftKey,
+  ]);
   /* ================= SAFE TEXT INSERT ================= */
 
   const insertText = (text) => {
@@ -155,7 +160,7 @@ const CreateNote = () => {
         pages: pagesData,
       });
 
-      localStorage.removeItem("noteDraft");
+      localStorage.removeItem(draftKey);
 
       setPdfUrl(data.pdfUrl);
       setNoteId(data._id);
@@ -269,7 +274,7 @@ const CreateNote = () => {
               pageRefs.current[page.id] = el;
 
               const draft = JSON.parse(
-                localStorage.getItem("noteDraft") || "{}"
+                localStorage.getItem(draftKey) || "{}"
               );
 
               const savedPage = draft.pages?.find(
