@@ -1,109 +1,267 @@
-# 📘 Notes Management System
+# 📘 AI-Powered Notes Management System
 
-A full-stack **Notes Management System** built using **React (Vite)**, **Node.js (Express)**, **Cloudinary** and **MongoDB**.  
-The project supports authentication, role-based access control, group management, PDF handling, and is fully deployable on free-tier hosting (Render + Vercel).
+A full-stack **AI-Powered Notes Management System** built using **React (Vite)**, **Node.js (Express)**, **MongoDB Atlas**, **Cloudinary**, **LangChain**, **RAG** and **Google Gemini**.
 
----
+The platform allows users to create notes, upload PDFs, generate summaries, generate important questions, and chat with documents using **Retrieval-Augmented Generation (RAG)**.
 
-## 🚀 Live Demo
 
-- Frontend:
-- Backend API:
-
-⚠️ On first load, the backend may take up to a minute to wake up (Render free tier).  
-The UI will display **“Waking up server… please wait”** during this time.
+⚠️ The backend is hosted on Render's free tier and may take up to 50 seconds to wake up after inactivity.
 
 ---
 
-## ✨ Features
+# ✨ Features
 
-### 🔐 Authentication & Authorization
-- JWT-based authentication
-- HTTP-only cookies
-- Role-based access control:
-  - superadmin
-  - group admin
-  - user
+## 🔐 Authentication & Authorization
 
-### 👥 Group Management
-- Users belong to groups
-- Group admins manage members
-- Superadmin manages all users and groups
+* JWT Authentication
+* HTTP-only Cookie Sessions
+* Role-Based Access Control
+* Protected Routes
 
-### 📝 Notes Management
-- Create, edit, delete notes
-- Group-scoped notes
-- PDF generation and download
-- PDF upload support
+### Roles
 
-### 🛠 Admin Controls
-- View system statistics
-- Enable/disable posting globally
-- Assign or revoke group admin roles
-- Delete users
-
-### 🌐 Production-Ready UX
-- Backend cold-start handling
-- Server wake-up loader
-- Clean error handling
+* Super Admin
+* Group Admin
+* User
 
 ---
 
-## 🏗 Tech Stack
+## 👥 Group Management
 
-### Frontend
-- React (Vite)
-- React Router DOM
-- Axios
-- Tailwind CSS
-- React Toastify
-- React-PDF / PDF.js
-
-### Backend
-- Node.js
-- Express
-- MongoDB + Mongoose
-- JWT
-- bcrypt
-- Multer
-- PDFKit
-- Cloudinary
-
-### Deployment
-- Frontend: Vercel
-- Backend: Render
-- Database: MongoDB Atlas
+* Create Groups
+* Join Groups
+* Group-wise Notes Access
+* Group Admin Management
+* Group Member Management
 
 ---
 
-## 📁 Project Structure
+## 📝 Notes Management
 
+### Rich Note Editor
+
+* Multi-page note editor
+* Custom page colors
+* Auto-save drafts
+* Date insertion
+* Bullet insertion
+* Page management
+
+### PDF Generation
+
+* Generate PDF from notes
+* Download PDF
+* Store PDFs securely on Cloudinary
+
+### PDF Upload
+
+* Upload existing PDFs
+* Cloudinary storage
+* Automatic PDF processing
+
+---
+
+# 🤖 AI Features
+
+## 📄 AI Summary Generator
+
+Generate concise revision-ready summaries from uploaded PDFs.
+
+Features:
+
+* Important points extraction
+* Study-friendly formatting
+* Quick revision notes
+* Gemini powered
+
+---
+
+## ❓ AI Question Generator
+
+Automatically generate important questions from uploaded documents.
+
+Features:
+
+* Exam-oriented questions
+* Concept-based questions
+* Revision preparation
+* Interview preparation
+
+---
+
+## 💬 AI PDF Chat (RAG)
+
+Ask questions directly from uploaded PDFs.
+
+### Workflow
+
+1. PDF Upload
+2. Text Extraction
+3. Page-wise Chunking
+4. Embedding Generation
+5. MongoDB Atlas Vector Search
+6. Relevant Chunk Retrieval
+7. Gemini Answer Generation
+
+### Features
+
+* Context-aware answers
+* Source page references
+* Chat history support
+* Multi-turn conversation
+* Document-grounded responses
+
+---
+
+# 🧠 Retrieval-Augmented Generation (RAG)
+
+The project implements a complete RAG pipeline.
+
+### Pipeline
+
+PDF Upload
+→ Text Extraction
+→ Recursive Text Splitting
+→ Chunk Storage
+→ Embedding Generation
+→ MongoDB Atlas Vector Search
+→ Context Retrieval
+→ Gemini LLM
+→ Final Answer
+
+---
+
+# 🛠 Admin Features
+
+## Super Admin
+
+* Manage Users
+* Manage Groups
+* View System Statistics
+* Enable/Disable Posting
+* Assign Group Admins
+* Remove Users
+
+## Group Admin
+
+* Manage Group Members
+* Moderate Notes
+* Group-level Control
+
+---
+
+# 🏗 Tech Stack
+
+## Frontend
+
+* React
+* Vite
+* React Router DOM
+* Axios
+* Tailwind CSS
+* React Toastify
+* React PDF
+* PDF.js
+* EmailJS
+
+## Backend
+
+* Node.js
+* Express.js
+* MongoDB
+* Mongoose
+* JWT
+* bcrypt
+* Multer
+* PDFKit
+
+## AI Stack
+
+* Google Gemini 2.5 Flash
+* LangChain
+* MongoDB Atlas Vector Search
+* Recursive Character Text Splitter
+* Embeddings
+* Retrieval-Augmented Generation (RAG)
+
+## Storage
+
+* Cloudinary
+
+## Deployment
+
+* Frontend: Vercel
+* Backend: Render
+* Database: MongoDB Atlas
+
+---
+
+# 📂 Project Structure
+
+```text
 Notes/
-├── client/ # Frontend (React + Vite)
-│ ├── src/
-│ │ ├── admin/ # Super admin pages
-│ │ ├── assets/ # Images & videos
-│ │ ├── components/ # Reusable UI components
-│ │ ├── context/ # Auth context
-│ │ ├── layouts/ # App layout wrappers
-│ │ ├── pages/ # Application pages
-│ │ ├── providers/ # Global providers
-│ │ ├── utils/ # API helpers & utilities
-│ │ ├── App.jsx
-│ │ └── main.jsx
-│ ├── index.html
-│ ├── vite.config.js
-│ └── package.json
 │
-├── server/ # Backend (Node + Express)
-│ ├── controllers/ # Route logic
-│ ├── middlewares/ # Auth & role middlewares
-│ ├── models/ # Mongoose schemas
-│ ├── routes/ # API routes
-│ ├── scripts/ # Maintenance scripts
-│ ├── utils/ # DB, Cloudinary, Multer
-│ ├── server.js # Entry point
-│ └── package.json
+├── client/
+│   ├── src/
+│   │   ├── admin/
+│   │   ├── assets/
+│   │   ├── components/
+│   │   ├── context/
+│   │   ├── layouts/
+│   │   ├── pages/
+│   │   ├── providers/
+│   │   ├── utils/
+│   │   ├── App.jsx
+│   │   └── main.jsx
+│   │
+│   ├── package.json
+│   └── vite.config.js
 │
-├── .gitignore
-└── README.md
+├── server/
+│   ├── controllers/
+│   ├── middlewares/
+│   ├── models/
+│   ├── routes/
+│   ├── scripts/
+│   ├── utils/
+│   ├── server.js
+│   └── package.json
+│
+├── README.md
+└── .gitignore
+```
+
+---
+
+# 🔥 Key Highlights
+
+* Full MERN Stack Application
+* AI-Powered PDF Understanding
+* Complete RAG Implementation
+* Vector Search with MongoDB Atlas
+* PDF Chat Assistant
+* AI Summary Generation
+* AI Question Generation
+* Role-Based Access Control
+* Cloudinary PDF Storage
+* Production Deployment (Render + Vercel)
+
+---
+
+# 📈 Future Improvements
+
+* Notes Sharing
+* Flashcard Generation
+* AI Quiz Generation
+* Semantic Search Across Notes
+* Voice-to-Notes
+* Multi-PDF Chat
+* Study Analytics
+
+---
+
+# 👨‍💻 Author
+
+**Dravin Bhardwaj**
+
+B.Tech CSE | MERN Stack Developer | AI & RAG Enthusiast
