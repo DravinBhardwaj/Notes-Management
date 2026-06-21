@@ -1,7 +1,7 @@
 import Chat from "../models/Chat.js";
 import Note from "../models/Note.js";
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
-import { searchChunks } from "../utils/VectorSearch.js";
+import { searchChunks } from "../utils/vectorSearch.js";
 
 export const chatWithPdf = async (req, res) => {
   try {
