@@ -3,7 +3,7 @@ import uploadPdf from "../utils/uploadPdf.js";
 import PDFDocument from "pdfkit";
 import axios from "axios";
 import SystemConfig from "../models/SystemConfig.js";
-import pdfParse from "pdf-parse";
+import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs";
 import PdfChunk from "../models/PdfChunk.js";
 import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
 import { generateEmbedding } from "../utils/generateEmbedding.js";
@@ -78,38 +78,53 @@ export const createNote = async (req, res) => {
 
         /* ================= CREATE CHUNKS ================= */
 
-        const allText = pages
-          .map((page) => cleanHtml(page.html))
-          .join("\n\n");
-
         const splitter =
           new RecursiveCharacterTextSplitter({
             chunkSize: 1500,
             chunkOverlap: 300,
           });
 
-        const chunks =
-          await splitter.createDocuments([
-            allText,
-          ]);
-
         const docs = [];
 
-        for (let i = 0; i < chunks.length; i++) {
-          const embedding =
-            await generateEmbedding(
-              chunks[i].pageContent
-            );
-          if (!embedding?.length) {
-            continue;
+        let globalChunkIndex = 0;
+
+        for (
+          let pageIndex = 0;
+          pageIndex < pages.length;
+          pageIndex++
+        ) {
+          const pageText = cleanHtml(
+            pages[pageIndex].html
+          );
+
+          const chunks =
+            await splitter.createDocuments([
+              pageText,
+            ]);
+
+          for (
+            let i = 0;
+            i < chunks.length;
+            i++
+          ) {
+            const embedding =
+              await generateEmbedding(
+                chunks[i].pageContent
+              );
+
+            if (!embedding?.length)
+              continue;
+
+            docs.push({
+              noteId: note._id,
+              pageNumber: pageIndex + 1, // page source
+              chunkIndex:
+                globalChunkIndex++,
+              text:
+                chunks[i].pageContent,
+              embedding,
+            });
           }
-          docs.push({
-            noteId: note._id,
-            pageNumber: null,
-            chunkIndex: i,
-            text: chunks[i].pageContent,
-            embedding,
-          });
         }
 
         if (docs.length > 0) {
@@ -320,10 +335,11 @@ export const updateNote = async (req, res) => {
         await PdfChunk.deleteMany({
           noteId: note._id,
         });
-
-        const allText = (pages ?? note.pages)
-          .map((page) => cleanHtml(page.html))
-          .join("\n\n");
+        note.summary = "";
+        note.questions = [];
+        await note.save();
+        const updatedPages =
+          pages ?? note.pages;
 
         const splitter =
           new RecursiveCharacterTextSplitter({
@@ -331,28 +347,48 @@ export const updateNote = async (req, res) => {
             chunkOverlap: 300,
           });
 
-        const chunks =
-          await splitter.createDocuments([
-            allText,
-          ]);
-
         const docs = [];
 
-        for (let i = 0; i < chunks.length; i++) {
-          const embedding =
-            await generateEmbedding(
-              chunks[i].pageContent
-            );
-          if (!embedding?.length) {
-            continue;
+        let globalChunkIndex = 0;
+
+        for (
+          let pageIndex = 0;
+          pageIndex < updatedPages.length;
+          pageIndex++
+        ) {
+          const pageText = cleanHtml(
+            updatedPages[pageIndex].html
+          );
+
+          const chunks =
+            await splitter.createDocuments([
+              pageText,
+            ]);
+
+          for (
+            let i = 0;
+            i < chunks.length;
+            i++
+          ) {
+            const embedding =
+              await generateEmbedding(
+                chunks[i].pageContent
+              );
+
+            if (!embedding?.length)
+              continue;
+
+            docs.push({
+              noteId: note._id,
+              pageNumber:
+                pageIndex + 1,
+              chunkIndex:
+                globalChunkIndex++,
+              text:
+                chunks[i].pageContent,
+              embedding,
+            });
           }
-          docs.push({
-            noteId: note._id,
-            pageNumber: null,
-            chunkIndex: i,
-            text: chunks[i].pageContent,
-            embedding,
-          });
         }
 
         if (docs.length > 0) {
@@ -443,21 +479,62 @@ export const uploadPdfController = async (req, res) => {
         message: "Super admin cannot upload notes",
       });
     }
-
+    if (!req.file) {
+      return res.status(400).json({
+        message: "PDF file is required",
+      });
+    }
     const title = req.file.originalname.replace(/\.pdf$/i, "");
 
     // Upload PDF to Cloudinary
     const pdfUrl = await uploadPdf(
       req.file.buffer,
-      title
+      `${Date.now()}-${title}`
     );
 
     // Extract text
-    const pdfData = await pdfParse(req.file.buffer);
+    // Extract text
+    const pdfData = new Uint8Array(
+      req.file.buffer
+    );
 
-    const extractedText = pdfData.text?.trim() || "";
+    const loadingTask =
+      pdfjsLib.getDocument({
+        data: pdfData,
+      });
 
-    if (!extractedText) {
+    const pdf =
+      await loadingTask.promise;
+
+    const documents = [];
+
+    for (
+      let pageNum = 1;
+      pageNum <= pdf.numPages;
+      pageNum++
+    ) {
+      const page =
+        await pdf.getPage(pageNum);
+
+      const textContent =
+        await page.getTextContent();
+
+      const pageText =
+        textContent.items
+          .map((item) => item.str || "")
+          .join(" ");
+
+      documents.push({
+        pageNumber: pageNum,
+        pageContent: pageText,
+      });
+    }
+
+    const fullText = documents
+      .map((page) => page.pageContent)
+      .join(" ");
+
+    if (!fullText.trim()) {
       return res.status(400).json({
         message: "No text found in PDF",
       });
@@ -481,36 +558,50 @@ export const uploadPdfController = async (req, res) => {
         chunkOverlap: 300,
       });
 
-    const chunks =
-      await splitter.createDocuments([
-        extractedText,
-      ]);
-
-    // Save chunks
     const docs = [];
 
-    for (let i = 0; i < chunks.length; i++) {
-      const embedding =
-        await generateEmbedding(
-          chunks[i].pageContent
-        );
-      if (!embedding?.length) {
-        continue;
+    let globalChunkIndex = 0;
+
+    for (const page of documents) {
+
+      const chunks =
+        await splitter.createDocuments([
+          page.pageContent,
+        ]);
+
+      for (
+        let i = 0;
+        i < chunks.length;
+        i++
+      ) {
+        const embedding =
+          await generateEmbedding(
+            chunks[i].pageContent
+          );
+
+        if (!embedding?.length)
+          continue;
+
+        docs.push({
+          noteId: note._id,
+          pageNumber:
+            page.pageNumber,
+          chunkIndex:
+            globalChunkIndex++,
+          text:
+            chunks[i].pageContent,
+          embedding,
+        });
       }
-      docs.push({
-        noteId: note._id,
-        pageNumber: null,
-        chunkIndex: i,
-        text: chunks[i].pageContent,
-        embedding,
-      });
     }
 
+    // Save chunks
     if (docs.length > 0) {
       await PdfChunk.insertMany(docs);
     }
 
     res.status(201).json(note);
+
 
   } catch (err) {
     console.error("UPLOAD PDF ERROR:", err);
