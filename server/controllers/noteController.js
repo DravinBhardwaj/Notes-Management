@@ -1,4 +1,5 @@
 import Note from "../models/Note.js";
+import Chat from "../models/Chat.js";
 import uploadPdf from "../utils/uploadPdf.js";
 import PDFDocument from "pdfkit";
 import axios from "axios";
@@ -644,7 +645,13 @@ export const deleteNote = async (req, res) => {
     }
 
     // Delete all chunks of this note
+    // Delete all chunks
     await PdfChunk.deleteMany({
+      noteId: note._id,
+    });
+
+    // Delete chat history
+    await Chat.deleteMany({
       noteId: note._id,
     });
 
